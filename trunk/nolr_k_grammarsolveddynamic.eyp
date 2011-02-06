@@ -12,10 +12,10 @@ Compile the grammar with:
 
 and execute it with:
 
-                ./nolr_k_grammarsolveddynamic.pm -t -c 'x y f'
-                ./nolr_k_grammarsolveddynamic.pm -t -c 'x y d'
-                ./nolr_k_grammarsolveddynamic.pm -t -c 'x y c c f'
-                ./nolr_k_grammarsolveddynamic.pm -t -c 'x y c c d'
+                ./nolr_k_grammarsolveddynamic.pm -t -i -c 'x y f'
+                ./nolr_k_grammarsolveddynamic.pm -t -i -c 'x y d'
+                ./nolr_k_grammarsolveddynamic.pm -t -i -c 'x y c c f'
+                ./nolr_k_grammarsolveddynamic.pm -t -i -c 'x y c c d'
 
 
 =head1 SEE ALSO
