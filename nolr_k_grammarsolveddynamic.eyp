@@ -8,11 +8,14 @@ the postponed conflict resolution technique.
 
 Compile the grammar with:
 
-                 eyapp -b '' nolr_k_grammarsolveddynamic.eyp
+                 eyapp -C nolr_k_grammarsolveddynamic.eyp
 
 and execute it with:
 
-                ./nolr_k_grammarsolveddynamic.pm -t
+                ./nolr_k_grammarsolveddynamic.pm -t -c 'x y f'
+                ./nolr_k_grammarsolveddynamic.pm -t -c 'x y d'
+                ./nolr_k_grammarsolveddynamic.pm -t -c 'x y c c f'
+                ./nolr_k_grammarsolveddynamic.pm -t -c 'x y c c d'
 
 
 =head1 SEE ALSO
@@ -21,18 +24,16 @@ and execute it with:
 
 =item * See file C<nolr_k_grammar.eyp>
 
-=item * This is inspired in an example I have seen this example 
+=item * This is inspired in an example I have seen 
 at Pete Jinks page: L<http://www.cs.man.ac.uk/~pjj>
-
-=item * See another solution in file: C<lr_1_grammar.eyp>
 
 =back
 
 =cut 
 
-use base q{DebugTail}; 
-
 %}
+
+%conflict BorE /\s*(c\s*)*d/? B : E
 
 %expect 0 1
 
@@ -47,10 +48,10 @@ A:
     E C 'f' 
 ;
 B:  %name B
-    'x' 'y' dORfconflict
+    'x' 'y' %PREC BorE
 ;
 E:  %name E
-    'x' 'y' dORfconflict
+    'x' 'y' %PREC BorE
 ;
 C: 
     %name C
@@ -59,24 +60,6 @@ C:
     C 'c' 
 ;
 
-dORfconflict:
-      /* empty. Just to solve the reduce-reduce conflict */
-      {
-        my $self = shift;
-
-        if (${$self->input()} =~ m{^.*?d}) {
-          $self->YYSetReduce(['c', 'd'], 'B' );
-        }
-        else {
-          $self->YYSetReduce(['c', 'f'], 'E' ); 
-        }
-        undef;
-      }
-;
 
 %%
 
-unless (caller) {
-  my $prompt = 'Try "x y c c c f" and "x y f". Press <CR><CTRL-D> to finish: ';
-  __PACKAGE__->main($prompt)
-}
