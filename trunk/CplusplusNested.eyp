@@ -11,12 +11,6 @@ my $NUM    = '(\d+)';
 %right '='
 %left '+'
 
-#%conflict decORexp {
-#  if ($self->YYIs('decl')) { $self->YYSetReduce('ID:DEC' ); }
-#  else { $self->YYSetReduce('ID:EXP' ); }
-#}
-#%explorer decORexp decl
-
 %conflict decORexp decl? ID:DEC : ID:EXP
 
 %expect-rr 1  # expect 1 reduce-reduce conflict
