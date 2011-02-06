@@ -9,13 +9,14 @@ the postponed conflict resolution technique.
 Compile the grammar with:
 
                  eyapp -C nolr_k_grammarsolveddynamic2.eyp
+                 eyapp -P CsD.eyp
 
 and execute it with:
 
-                ./nolr_k_grammarsolveddynamic.pm -t -i -c 'x y f'
-                ./nolr_k_grammarsolveddynamic.pm -t -i -c 'x y d'
-                ./nolr_k_grammarsolveddynamic.pm -t -i -c 'x y c c f'
-                ./nolr_k_grammarsolveddynamic.pm -t -i -c 'x y c c d'
+                ./nolr_k_grammarsolveddynamic2.pm -t -i -c 'x y f'
+                ./nolr_k_grammarsolveddynamic2.pm -t -i -c 'x y d'
+                ./nolr_k_grammarsolveddynamic2.pm -t -i -c 'x y c c f'
+                ./nolr_k_grammarsolveddynamic2.pm -t -i -c 'x y c c d'
 
 
 =head1 SEE ALSO
