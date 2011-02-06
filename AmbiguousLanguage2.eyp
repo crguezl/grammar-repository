@@ -5,19 +5,10 @@
 
 %conflict AorC ab? shift: BC
 
-#%conflict AorC {
-#   $self->YYIf('ab', 'shift', 'BC');
-#}
-
 #%expect 1 1
 %%
 st:  AorC? s
 ;
-
-#AorC_explorer: {   
-#       $_[0]->YYNestedParse('ab', 'AorC'); 
-#   }   
-#;
 
 s: aeqb 
  | beqc
