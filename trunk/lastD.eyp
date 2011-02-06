@@ -1,11 +1,8 @@
 %{
-=head1 SYNOPSIS
+=head1 AUXILIARY GRAMMAR FOR DebugDynamicResolution4.eyp
 
-See http://search.cpan.org/perldoc?Parse::Eyapp::debuggingtut
-This file solves the conflict in Debug.eyp using dynamic 
+This file solves the conflict in DebugDynamicResolution4.y using dynamic 
 conflict resolution techniques
-(see section 'SOLVING CONFLICTS WITH THE POSTPONED CONFLICT STRATEGY' in
-http://search.cpan.org/perldoc?Parse::Eyapp::debuggingtut)
 
 Compile it with 
 
