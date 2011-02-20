@@ -1,6 +1,6 @@
 all:
 	eyapp -C PLIConflictNested.eyp
-	eyapp -P then_else.eyp
+	eyapp -P expr_then.eyp
 	./PLIConflictNested.pm -t -c 'if if=then then then=if'
 test:
 	./PLIConflictNested.pm -t -c 'if if then then=if'
