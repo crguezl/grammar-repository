@@ -10,26 +10,27 @@ that fulfills the parser expectatives.
 
 Compile it with:
 
-               eyapp -C PLIConflictNested2.eyp
-               eyapp -P Assign2.eyp
+               eyapp -C PLIConflictNested.eyp
+               eyapp -P expr_then2.eyp
 
 Run it with:
 
-               ./PLIConflictNested2.pm -t -c 'if if=then then then=if'
+               ./PLIConflictNested.pm -t -c 'if if=then then then=if'
 
 for more detail:
 
-               ./PLIConflictNested2.pm -d -t -c 'if if=then then then=if'
+               ./PLIConflictNested.pm -d -t -c 'if if=then then then=if'
 
 and also
 
-               ./PLIConflictNested2.pm -t -i -c 'if then=if then if=then
+               ./PLIConflictNested.pm -t -i -c 'if then=if then if=then
 
 The problem arises again
 
 Also try:
 
-                ./PLIConflictNested2.pm -t -c 'if then=if then if a=b then c=d'
+                ./PLIConflictNested.pm -t -c 'if then=if then if a=b then c=d'
+                ./PLIConflictNested.pm -t -c 'if if then if a=b then then=if'
 
 =cut
 
@@ -38,7 +39,7 @@ Also try:
 %strict
 
 %token then = %/(then)\b/
-%token if   = %/(if)\b/=then_else
+%token if   = %/(if)\b/=expr_then
 %token ID   = /([a-zA-Z_]\w*)/
 
 %tree bypass
