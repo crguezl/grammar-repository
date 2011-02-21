@@ -7,11 +7,12 @@
 %left '+'
 
 %%
-prog:       /* empty */        | prog stmt ;
-stmt:       expr ';'           | ISDECL decl    ;
-expr:       ID                 | NUM | INT '(' expr ')' | expr '+' expr | expr '=' expr ; 
+prog:       /* empty */        | prog stmt                   ;
+stmt:       expr ';'           | ISDECL decl                 ;
+expr:       ID                 | NUM      | INT '(' expr ')' 
+    |       expr '+' expr      | expr '=' expr               ; 
 decl:       INT declarator ';' | INT declarator '=' expr ';' ; 
-declarator: ID                 | '(' declarator ')' ; 
+declarator: ID                 | '(' declarator ')'          ; 
 %%
 
 ####################################################
