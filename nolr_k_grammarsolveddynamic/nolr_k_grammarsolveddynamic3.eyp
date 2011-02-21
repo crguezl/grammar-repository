@@ -1,0 +1,46 @@
+%{
+
+=head1 SYNOPSIS 
+
+This example illustrates how to solve the conflict in
+C<nolr_k_grammar.eyp> using 
+the postponed conflict resolution technique.
+
+Compile the grammar with:
+
+                 eyapp -C nolr_k_grammarsolveddynamic3.eyp
+                 eyapp -P CsD.eyp
+
+and execute it with:
+
+                ./nolr_k_grammarsolveddynamic3.pm -t -i -c 'x y f'
+                ./nolr_k_grammarsolveddynamic3.pm -t -i -c 'x y d'
+                ./nolr_k_grammarsolveddynamic3.pm -t -i -c 'x y c c f'
+                ./nolr_k_grammarsolveddynamic3.pm -t -i -c 'x y c c d'
+
+
+=head1 SEE ALSO
+
+=over 2
+
+=item * See file C<nolr_k_grammar.eyp>
+
+=item * This is inspired in an example I have seen 
+at Pete Jinks page: L<http://www.cs.man.ac.uk/~pjj>
+
+=back
+
+=cut 
+
+%}
+
+%token CSD = %//=CsD
+%token c d f x y
+
+%%
+A: B CSD C d | E C f ;
+B: x y ;
+E: x y ;
+C: /* empty */ | C c ; 
+%%
+
