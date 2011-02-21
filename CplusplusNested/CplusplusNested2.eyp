@@ -28,10 +28,6 @@ the compile it again, using 'decl' as start symbol:
 
 Run it with:
 
-   ./CplusplusNested2.pm -t -nos -i
-
-or 
-
    ./CplusplusNested2.pm -t -i -c 'int (x) + 2; int (z) = 4;'
 
 try with inputs:
