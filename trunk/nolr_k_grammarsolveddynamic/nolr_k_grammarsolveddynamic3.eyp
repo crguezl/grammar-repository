@@ -8,7 +8,7 @@ the postponed conflict resolution technique.
 
 Compile the grammar with:
 
-                 eyapp -C nolr_k_grammarsolveddynamic3.eyp
+                 eyapp -TC nolr_k_grammarsolveddynamic3.eyp
                  eyapp -P CsD.eyp
 
 and execute it with:
