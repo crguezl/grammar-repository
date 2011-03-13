@@ -4,7 +4,7 @@
 # ~/LEyapp/examples/debuggingtut$ ./AmbiguousLanguage1.pm -t -i -m 1 -c 'abbcc'
 # ~/LEyapp/examples/debuggingtut$ ./AmbiguousLanguage1.pm -t -i -m 1 -c 'aabbc'
 
-%token AB=%/(?=.)/=ab
+%token AB=%//=ab
 %token a b c
 %%
 s: AB aeqb 
