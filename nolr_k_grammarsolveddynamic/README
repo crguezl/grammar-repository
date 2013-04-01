@@ -2,6 +2,7 @@ Grammars:
 
   nolr_k_grammarsolveddynamic.y
   nolr_k_grammarsolveddynamic2.eyp
+  nolr_k_grammarsolveddynamic3.eyp
 
 fix solutions for the following non LR(k) Grammar
 
