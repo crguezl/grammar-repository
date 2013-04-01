@@ -6,21 +6,20 @@ Grammars:
 
 fix solutions for the following non LR(k) Grammar
 
-%%
-A: 
-     B C 'd' 
-   | E C 'f' 
-;
-B: 'x' 'y' 
-;
-E: 'x' 'y' 
-;
-C: /* empty */ | C 'c' 
-;
+    %%
+    A: 
+         B C 'd' 
+       | E C 'f' 
+    ;
+    B: 'x' 'y' 
+    ;
+    E: 'x' 'y' 
+    ;
+    C: /* empty */ | C 'c' 
+    ;
 
+    %%
 
-%%
-
-See section 2.1 "Example: a Non LR(k) Grammar" in teh accompanying file
+See section 2.1 "Example: a Non LR(k) Grammar" in the accompanying file
 ppcr_ciaa.pdf
 
