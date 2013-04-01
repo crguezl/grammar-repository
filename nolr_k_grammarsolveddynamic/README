@@ -1,0 +1,25 @@
+Grammars:
+
+  nolr_k_grammarsolveddynamic.y
+  nolr_k_grammarsolveddynamic2.eyp
+
+fix solutions for the following non LR(k) Grammar
+
+%%
+A: 
+     B C 'd' 
+   | E C 'f' 
+;
+B: 'x' 'y' 
+;
+E: 'x' 'y' 
+;
+C: /* empty */ | C 'c' 
+;
+
+
+%%
+
+See section 2.1 "Example: a Non LR(k) Grammar" in teh accompanying file
+ppcr_ciaa.pdf
+
