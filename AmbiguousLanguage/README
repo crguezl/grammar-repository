@@ -1,3 +1,10 @@
 Some languages are intrinsically ambiguous, i.e., every CFG for the
 following language is ambiguous, e.g.,
 { a^n b^n c^m : n >= 0, m >= 0 } U { a^n b^m c^m : n >= 0, m >= 0 }
+
+# ~/LEyapp/examples/debuggingtut$ eyapp -vTC AmbiguousLanguage1.eyp 
+# 1 shift/reduce conflict and 1 reduce/reduce conflict
+# ~/LEyapp/examples/debuggingtut$ eyapp -P ab.eyp 
+# ~/LEyapp/examples/debuggingtut$ ./AmbiguousLanguage1.pm -t -i -m 1 -c 'abbcc'
+# ~/LEyapp/examples/debuggingtut$ ./AmbiguousLanguage1.pm -t -i -m 1 -c 'aabbc'
+
