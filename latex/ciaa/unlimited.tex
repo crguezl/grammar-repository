@@ -1,0 +1,118 @@
+In terms of grammar parsing abilities, we presume that any Context Free Grammar
+can be parsed using a Low Level PPCR LALR parser to produce the AST the user requires.
+This presumption is based in the fact that we 
+can resort to the full Turing Complete target language to find
+the conditions that satisfactorily solve the conflict. 
+The answer to this question when using only the High Level PPCR syntax 
+- the syntax introduced in section \ref{subsection:hlppcr} - is not so clear.
+Here the expression {\it High Level PPCR} refers to PPCR 
+solutions in which no explicit code in the hosting language appears,
+either in the main grammar or in the auxiliar subgrammar used to decide the correct action.
+
+We believe, but have no formal proof, that
+the following unambiguous grammar 
+is  an 
+example of a Low Level PPCR grammar that is  not a High Level PPCR grammar.
+
+\begin{center}
+\begin{tabular}{p{4.2cm}}
+\begin{verbatim}
+%%
+T: S          ;
+S: x S x | x  ;
+x: NUM   |  x OP NUM ;
+%%
+\end{verbatim}
+\end{tabular}
+\end{center}
+Though it is straighforward to find equivalent LL(1) and LR(1) grammars\footnote{The language 
+is even regular in {\tt x}. Is given by: {\tt /x(xx)*/}} the grammar can not be parsed by any LL(k) nor LR(k),  
+nor by packrat parsing algorithms.  \cite{ford}.
+An LR parser has to shift  on \verb|NUM| until the middle \verb|x| is reached. At that time it
+has to reduce by $S \rightarrow x$. This is the \verb|eyapp| description of the conflict:  
+\begin{center}
+\begin{tabular}{p{9.3cm}}
+\begin{VERBATIM}[numbers=none]
+State 6:
+ \textbf{S -> x . S x      (Rule 2)}
+ \textbf{S -> x .          (Rule 3)}
+ x -> x . OP NUM   (Rule 5)
+ \textbf{NUM shift, and go to state 4}  \textit{# not the middle x}
+ OP shift, and go to state 8
+ $end reduce using rule 3 (S)
+ \textbf{NUM [reduce using rule 3 (S)]} \textit{# is the middle x}
+ S go to state 7
+ x go to state 6
+
+State 4:
+	x -> NUM .	(Rule 4)
+	$default	reduce using rule 4 (x)
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+When state 6 is reached we have just seen an \verb|x| (observe how the three kernel items
+have the dot after the \verb|x|). The presence of an \verb|OP| does not causes
+conflict, since it means we must stay processing the current \verb|x|.
+The presence of a \verb|NUM| indicates the start of a new \verb|x|.
+We have to choose to reduce by the production \verb|S| $\rightarrow$ \verb|x| if
+this \verb|x| is the one in the middle, otherwise we make a \verb|shift| 
+to state 4 where the \verb|NUM| is reduced to a \verb|x|, starting the 
+processing of the new arithmetic expression \verb|x|.
+The challenge  here
+is to make the parser work {\it without changing} the grammar structure.
+
+Let us see that this grammar is Low Level PPCR. We indentify the conflict
+- which we name \verb|isIn|\verb|TheMiddle| -, labelling as \verb|:MIDx| 
+the reduction item and marking the exploration point:
+
+\begin{center}
+\begin{tabular}{p{8.6cm}}
+\begin{VERBATIM}
+%token NUM = /(\Bs{d}+)/
+%token OP  = /([-+*\Bs{/}])/
+%\B{}
+my $nxs = 0;
+%\BB{}
+\textbf{%conflict isInTheMiddle} \B{}
+  $nxs++;
+  if ($nxs == \textbf{$self->YYVal('ExpList')}) \B{} 
+    \textbf{$self->YYSetReduce(':MIDx' )};
+    $nxs = 0; 
+  \BB{}
+  else \B{} \textbf{$self->YYSetShift()} \BB{} 
+\BB{}  
+\textbf{%explorer isInTheMiddle ExpList}
+
+%%
+T: \textbf{%isInTheMiddle?} S ; 
+S:   x  \textbf{%PREC isInTheMiddle} S x  
+  |  \textbf{%name :MIDx} 
+     x  \textbf{%PREC isInTheMiddle} 
+;
+x: NUM | x OP NUM ;
+%%
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+The exploration code uses the following auxiliary
+grammar \verb|ExpList|, which has been augmented with {\it semantic actions},
+to compute the middle \verb|x|:
+\begin{VERBATIM}
+  %%
+  \textbf{ExpList}: S    \B{} 1+int($_[1]/2) \BB{} ; 
+  S:       S x  \B{} $_[1] + 1 \BB{} |  x   \B{} 1 \BB{} ;
+  x:       NUM                |  x OP NUM ;
+  %%
+\end{VERBATIM}
+The semantic value returned by the \verb|ExpList| grammar is later accessed inside the conflict handler
+code above via the method call \verb|$self->YYVal('ExpList')|.
+
+The conflict solver code is quite simple:
+it keeps the position of the current \verb|x|
+inside the variable \verb|$nxs|. Each time a new \verb|x| is seen,
+\verb|$nxs| is incremented.
+The reduction is called when the middle point is reached.
+
+The proof that the conflicts in this grammar can not be solved using High Level PPCR
+remains open for us.
+

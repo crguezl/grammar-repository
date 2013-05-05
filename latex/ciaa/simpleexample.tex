@@ -1,0 +1,107 @@
+The following
+example
+%\footnote{For the full examples used in this paper, see the directory {\tt examples/debuggingtut/} in the {\tt Parse::Eyapp} distribution \cite{Rodriguez:Leon}} 
+accepts lists of two kind of commands:
+{\it arithmetic expressions} like \verb|4-2-1| or one of two {\it associativity commands}:
+\verb|left| or  \verb|right|. When a \verb|right| command is issued, the semantic of the
+\verb|'-'| operator is changed to be right associative. When a \verb|left| command is issued
+the semantic for \verb|'-'| returns to its classic left associative interpretation.
+Here follows an example of input. Between shell-like comments appears the expected output:
+\begin{center}
+\begin{tabular}{p{8cm}}
+\begin{verbatim}
+$ cat input_for_dynamicgrammar.txt 
+2-1-1 # left:  0 = (2-1)-1
+RIGHT
+2-1-1 # right: 2 = 2-(1-1)
+LEFT
+3-1-1 # left:  1 = (3-1)-1
+RIGHT
+3-1-1 # right: 3 = 3-(1-1)
+\end{verbatim}
+\end{tabular}
+\end{center}
+We use a variable \verb|$reduce| (initially set to \verb|1|)
+to decide the way in which the ambiguity
+\verb|NUM-NUM-NUM| is solved. If \verb|false| we will set the \verb|NUM-(NUM-NUM)|
+interpretation. The variable \verb|$reduce|
+is modified each time the input program emits a \verb|LEFT| or
+\verb|RIGHT| command.
+
+Following the steps outlined above,
+and after looking at the \verb|.output| file, we see
+that the items involved in the announced shift-reduce conflict are
+
+\begin{eqnarray*}
+expr \rightarrow expr_\uparrow - expr \\
+expr \rightarrow expr - expr_\uparrow 
+\end{eqnarray*}
+
+\noindent and the lookahead token is \verb|'-'|.
+We next mark the points in conflict in the grammar using
+the \verb|%PREC| directive (see Listing \ref{listing:expressions})
+\begin{lstlisting}[
+        caption={ An Example of Context Dependent Ambiguity Resolution },
+        label = {listing:expressions},
+        frame=bottomline,
+        keywords={PREC, my,return,lexer,tree,bypass,name,Elements,Int,String,YYParse,LexerGen,Gen},
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+%%
+p:  
+      /* empty */     {}
+    | p c             {}
+;
+
+c:
+      $expr { print "$expr\n" }
+    | RIGHT { $reduce = 0}
+    | LEFT  { $reduce = 1}
+;
+
+expr: 
+      '(' $expr ')'  { $expr } 
+    | %name :M
+      expr.left         %PREC lOr
+        '-' expr.right  %PREC lOr
+         { $left -$right }
+
+    | NUM
+;
+\end{lstlisting}
+
+The $dollar$ and $dot$ notation used in some right hand sides (rhs)  like in \verb|expr.left| \verb|'-'| \verb|expr.right|
+and \verb|$expr| is used to associate variable names with the attributes of the symbols.
+
+The conflict handler \verb|lOr| defined in the header section
+is:
+\begin{lstlisting}[
+        %caption={ An Example of Context Dependent Ambiguity Resolution },
+        %label = {listing:expressions},
+        frame=none,
+        keywords={conflict,YYSetReduce,YYSetShift,
+        PREC, if, else, my,return,lexer,tree,bypass,name,Elements,Int,String,YYParse,LexerGen,Gen},
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+%conflict lOr {
+  if ($reduce) {$self->YYSetReduce('-', ':M')} 
+  else         {$self->YYSetShift('-')}
+}
+\end{lstlisting}
+If \verb|$reduce| is \verb|true|
+we set the parsing action to {\it reduce} by the production labelled \verb|:M|,
+otherwise we choose the {\it shift action}.
+
+Observe how PPCR allow us to dynamically change at will the meaning of the same statement.
+That is certainly harder to do  using alternative techniques,
+either problem specific, like {\it lexical Tie-Ins} \cite{bison}, or more general,
+like \mbox{GLR \cite{tomita2}}.
+
+
+

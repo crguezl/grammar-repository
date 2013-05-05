@@ -1,0 +1,533 @@
+The fact that we can compute the exact set of expected tokens 
+has several applications. One of them is that a LR parser 
+can be easily re-used to build a generator of the language described by
+a grammar.
+
+The idea  of grammar based data generation languages
+has been exploited before \cite{maurer,yagg}.
+What is new in the approach presented here is that
+the same parser can be reused to 
+generate data that is not only syntactically correct but
+that also holds specified semantic restrictions. 
+This section illustrates the proposed methodology
+through the implementation of a generator of semantically correct
+sequences of assignment statements.
+
+\subsection{The Lexical Generator}
+
+For each token the programmer defines a random generator,
+which generates elements in the language associated with the token.
+Then, instead of the typical lexical analyzer,
+we use the lexical generator described in
+Algorithm \ref{algorithm:lexicalgenerator}:
+
+
+\begin{algorithm}[h] 
+\caption{$LexicalGenerator(parser)$}
+\label{algorithm:lexicalgenerator}
+\begin{algorithmic}[1]
+\REQUIRE {$LR\ Parser:\ parser$}
+\ENSURE A syntactically correct pair $(token, attribute)$
+\STATE  \label{line:weights} $weights = parser.weights()$
+\STATE  \label{line:expected}$expected = parser.YYExpected()$
+\STATE  \label{line:calltoFreq} $token = Freq(weights, expected)$
+\STATE  \label{line:setgen}$generator = parser.generator(token)$
+\STATE  \label{line:setattr}$attribute = generator.generate()$
+\RETURN \label{line:returntoken}$(token, attribute)$
+\end{algorithmic}
+\end{algorithm}
+    
+The attribute $parser.weights$ of the $parser$ object
+contains a probability distribution
+which can be changed on the fly by the grammar semantic actions.
+The call to $Freq$ at line \ref{line:calltoFreq}
+randomly picks one of the expected tokens
+according to the $weights$ probability distribution.
+Once the $token$ is chosen among the expected ones ($parser.YYExpected()$), 
+the lexer 
+calls the $generate$ method of the corresponding generator 
+$parser.generator(token)$ to compute the $attribute$.
+Finally, the pair $(token, attribute)$ is returned to the
+syntactic generator (line \ref{line:returntoken}).
+
+Listings 
+\ref{listing:lexergen}, 
+\ref{listing:parsergen1}, 
+\ref{listing:parsergen2}
+and 
+\ref{listing:usinggen}
+describe a generator of syntactically and semantically
+correct lists of assignment statments: Only initialized variables 
+are used inside the generated expressions. 
+The generated expressions are also free 
+of overflow/underflow and division-by-zero errors.
+
+Line 1 in Listing \ref{listing:lexergen} creates a syntax generator
+object according to the grammar described in \verb|$package|.
+The call to method \verb|LexerGen| in lines 2-21 
+builds and set a lexical generator that behaves 
+as described in Algorithm \ref{algorithm:lexicalgenerator}.
+
+\begin{lstlisting}[
+        caption={Setting the Generator}, 
+        label={listing:lexergen}, 
+        frame=bottomline,
+        keywords={if, my, return,Elements,Int,String,YYParse,LexerGen,Gen}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+ 1 my $gen = $package->new();
+ 2 $gen->LexerGen(
+ 3  NUM => [ 2, Int(range=>[0, 9], sized=>0)],
+ 4  VAR => [
+ 5   0, # no variables are defined at the start
+ 6   Gen {
+ 7    if (keys %st) {
+ 8     return Elements(keys %st)->generate 
+ 9    }
+10    return Int(range=>[0,9],sized=>0)->generate;
+11   },
+12  ],
+13  VARDEF => [ 2,  String( length=>[1,2], 
+14                          charset=>"A-NP-Z", 
+15                          size => 100 )
+16  ],
+17  '=' => 2, '-' => 1, '+' => 2, 
+18  '*' => 4, '/' => 2, '^' => 0.5, 
+19  ';' => 1, '(' => 1, ')' => 2, 
+20  ''  => 2, 'error' => 0,
+21 );
+\end{lstlisting}
+
+%The call to the method \verb|LexerGen| (lines 2-21)
+%dynamically generates a lexical generator subroutine that follows 
+%the scheme described in algorithm \ref{algorithm:lexicalgenerator}.
+
+The  method \verb|LexerGen| 
+receives as arguments the set of pairs 
+\[token \Rightarrow generator\ descriptor\]
+A $generator\ descriptor$  is a pair 
+\[[frequency\ weight, generator\ function]\]
+as in:
+\begin{lstlisting}[
+        %caption={Setting the Generator}, label={listing:lexergenvardef}, 
+        frame=none,
+        keywords={Int,String,YYParse,LexerGen}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+13  VARDEF => [ 2,  String( length=>[1,2], 
+14                          charset=>"A-NP-Z", 
+15                          size => 100 )
+16  ],
+\end{lstlisting}
+which associates an absolute frequency and
+a generator with the token \verb|VARDEF|. 
+The call to function \verb!String! 
+(See \cite{testlectrotest})
+returns a function
+which is a string generator: it generates
+strings of length between 1 and 2 using the specified
+char set.
+A $generator\ descriptor$ can also be just a number
+describing the frequency weight as in the case of the token \verb|'='|:
+
+\begin{lstlisting}[
+        %caption={Setting the Generator}, label={listing:lexergeneq}, 
+        frame=none,
+        keywords={Int,String,YYParse,LexerGen}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+17  '=' => 2, '-' => 1, '+' => 2, 
+\end{lstlisting}
+In such case the corresponding generator 
+is a \verb|Unit| 
+(See \cite{testlectrotest})
+generator: it always return the same 
+value. That is, the generator for \verb|'='| always return \verb|'='|.
+
+The token \verb|VAR| stands for variable identifiers.
+We associate a weight 0 to it,
+since at the beginning no variables have been
+initialized. This inhibits the generation of the token \verb|VAR| by
+the lexical generator:
+\begin{lstlisting}[
+        %caption={Setting the Generator}, label={listing:lexergeneq}, 
+        frame=none,
+        keywords={Elements,Int,String,YYParse,LexerGen, Gen}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+ 4  VAR => [
+ 5   0, # no variables are defined at the start
+ 6   Gen {
+ 7    if (keys %st) {
+ 8     return Elements(keys %st)->generate 
+ 9    }
+10    return Int(range=>[0,9],sized=>0)->generate;
+11   },
+12  ],
+\end{lstlisting}
+
+The method \verb|Gen| receives as argument a subroutine
+reference and builds a generator object from it.
+The variable \verb|%st| used in lines 7 and 8 holds the program symbol table.
+Its keys are the variable identifiers that have been 
+already initialized. The associated generator (lines 7-10) consults
+if the table is not empty. If so,
+the call to \verb|Elements(keys %st)| returns a
+generator that randomly chooses one of the identifiers in the
+hash table \verb|%st|. Otherwise,
+an integer number is returned (line 10) instead.
+
+Observe how both tokens \verb|VAR| and \verb|VARDEF| stands
+for the same lexical description: identifiers.
+As in the former PL-I example in Section \ref{section:pli},
+there is no ambiguity nor conflict. The problem is solved 
+due to the close relation via \verb|YYExpected| between the lexer generator
+and the syntax generator.
+The places where \verb|VARDEF| is expected do not intersect
+those in which \verb|VAR| is expected.
+
+\subsection{The Syntax and Semantic Generator}
+Once the lexical generator is set,
+we proceed to define the syntax generator
+using the grammar specification.
+For each rule
+
+\begin{center}
+$A \rightarrow \alpha$ \verb|{ action() }|
+\end{center}
+
+\noindent the associated semantic action \verb|{ action() }|
+works as a \verb|generate| method for $A \rightarrow \alpha$.
+The semantic action can also be used to modify
+the token probability distribution.
+The bottom-up tree traversing of the abstract syntax tree
+builds the final generated expression. 
+
+Listings 
+\ref{listing:parsergen1}
+and
+\ref{listing:parsergen2}
+show the rest of the grammar. 
+For most of the productions $A \rightarrow X_1 ... \ldots X_n$
+the generator simply consists of the concatenation
+of the attributes/phrases generated for the symbols $X_i$ in
+their right hand side. The eyapp directive \verb|%defaultaction| 
+sets the default semantic action (Listing \ref{listing:parsergen1}). 
+At line 2 we extract a reference to the generator
+object from the list of arguments in \verb|@_|. Line 3 
+joins/concatenates the remaining arguments which are the
+strings generated for the  $X_i$ symbols in the right hand side.
+
+\begin{lstlisting}[caption={Setting the Default Semantic Action}, label={listing:parsergen1}, 
+        frame=bottomline,
+        keywords={defaultaction,Paste,use, base, Gen, sub, pushdeltaweight,popweight,Unit,
+                  my,generate,while,do, return,join}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+
+ 1	%defaultaction {
+ 2	  my $self = shift;
+ 3	  return join '', @_;
+ 4	}
+ 5	
+ 6	%%
+\end{lstlisting}
+
+By setting the default action to \verb| join '', @_|
+we can omit the semantic action in many of the grammar productions
+as in:
+
+\begin{lstlisting}[%caption={}, label={listing:parsergen1}, 
+        %frame=bottomline,
+        %keywords={defaultaction,Paste,use, base, Gen, sub, pushdeltaweight,popweight,Unit,
+        %          my,generate,while,do, return}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+exp:
+    NUM                
+  | VAR
+  | exp '+' exp        
+  | exp '-' exp        
+  | exp '*' exp        
+  | exp '/' exp        
+  | exp '^' exp        
+      ...
+;
+
+%%
+\end{lstlisting}
+
+There are, however, circumstances in which we want to modify on the fly
+the kind of phrases generated by changing the token probability distribution.
+One of those cases corresponds to the parenthesis rule 
+\mbox{\tt expr $\rightarrow$ '(' expr ')'}:
+\begin{lstlisting}[%caption={}, label={listing:parsergen1}, 
+        %frame=bottomline,
+        keywords={defaultaction,Paste,use, base, Gen, sub, pushdeltaweight,popweight,Unit,
+                  my,generate,while,do, return}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+ 1 exp:
+ 2     NUM                
+ 3   | ... # other productions 
+ 4   | '('   { 
+ 5             $_[0]->pushdeltaweight(
+ 6               '(' => -1, 
+ 7               ')' => +1, 
+ 8               '+' => +1, 
+ 9             ); 
+10           } 
+11       exp 
+12     ')'
+13       {
+14          $_[0]->popweight; 
+15          "($_[3])"
+16       }
+17 ;
+\end{lstlisting}
+Each time an open parenthesis is generated, the intermediate semantic action
+calls the parser method \verb|pushdeltaweight| (lines 4 to 10 above. Variable \verb|$_[0]| refers
+to the parser object), which stores the current probability
+distribution on a token probability stack,
+increases the weigth for the closing parenthesis (line 7)
+and decreases the weight for the open parenthesis (line 6).
+This way we make more unlikely the presence of nested 
+parenthesis and increase the certainty that the parenthesized expression
+will be not too large.
+We also increase the weight of token \verb|'+'| (line 8),
+since  we humans,  ordinarily  make use of parenthesis to alter
+the precedence of additive operators versus multiplicative 
+operators. The final semantic action at lines 13-16 restores the former
+probability distribution (line 14) and returns the concatenation of 
+the three generated substrings (line 15).
+
+Remember that we had - Listing \ref{listing:lexergen}, lines 4-12 - initially set 
+the weight of token \verb|VAR| to zero so that at the beginning 
+of the generation no \verb|VAR| tokens may appear.
+This weight is increased as soon as the first assignment 
+statement occurs (see line 4 below):
+\begin{lstlisting}[%caption={The Grammar}, label={listing:parsergen2}, 
+        %frame=bottomline,
+        keywords={defaultaction,deltaweight,Paste,use, base, Gen, sub, pushdeltaweight,popweight,Unit,
+                  my,generate,while,do, return}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+ 1 stmts:
+ 2     stmt
+ 3       {
+ 4         $_[0]->deltaweight(VAR => +1); 
+ 5         $_[1];
+ 6       }
+ 7   | stmts ';' { "\n" } stmt 
+ 8 ;
+\end{lstlisting}
+
+An intermediate action \verb| { "\n" } | is set at line 7 
+for production \verb|stmt| $\rightarrow$ \verb|stmts| \verb|';'| \verb|stmt|
+to trick the default action to insert a carriage return 
+after each generated statement.
+
+The semantic action for production \mbox{\tt stmt $\rightarrow$ VARDEF '=' exp}
+- in the listing below - shows a way to
+produce expressions free of  {\tt division by zero} and other floating point 
+errors:
+
+\begin{lstlisting}[%caption={The Grammar}, label={listing:parsergen2}, 
+        %frame=bottomline,
+        keywords={defaultaction,deltaweight,Paste,use, base, Gen, sub, pushdeltaweight,popweight,Unit,
+                  my,generate,while,do, return}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+ 1 stmt:
+ 2     $VARDEF '=' $exp  
+ 3       {
+ 4         my $self = shift;
+ 5 
+ 6         my $res = EVALUATE($exp);
+ 7         return '' if $res =~ /^error/;
+ 8 
+ 9         $st{$VARDEF} = { exp   => $exp, 
+10                          value => $res};
+11 
+12         "$VARDEF=$exp";
+13       }
+14 ;
+\end{lstlisting}
+
+Line 2 shows the use of the $dollar$ notation in eyapp. By 
+prefixing the symbols \verb|VARDEF| and \verb|exp|  
+with a dollar we can later refer 
+inside the semantic action to their asociated
+attributes by variables with the same name (lines 6 and 9),
+instead of using the classical positional notation (a.k.a 
+\verb|$_[1]| and \verb|$_[3]|).
+
+At line 6 we evaluate the generated expression.
+If there were {\tt division by zero} or other floating point errors
+the expression is discarded (line 7).
+Otherwise, the result and definition 
+of this variable are stored in its corresponding
+entry in the symbol table \verb|st| (lines 9-10).
+Finally, the concatenation of the generated strings 
+is returned at line 12.
+
+\begin{lstlisting}[caption={The Grammar}, label={listing:parsergen2}, 
+        frame=bottomline,
+        keywords={defaultaction,Paste,use, base, Gen, sub, pushdeltaweight,popweight,Unit,
+                  my,generate,while,do, return}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+stmts:
+    stmt
+      {
+        $_[0]->deltaweight(VAR => +1); 
+        $_[1];
+      }
+  | stmts ';' { "\n" } stmt 
+;
+
+stmt:
+    $VARDEF '=' $exp  
+      {
+        my $self = shift;
+
+        my $res = EVALUATE($exp);
+        return '' if $res =~ /^error/;
+
+        $st{$VARDEF} = { exp => $exp, value => $res};
+
+        "$VARDEF=$exp";
+      }
+;
+exp:
+    NUM                
+  | VAR
+  | exp '+' exp        
+  | exp '-' exp        
+  | exp '*' exp        
+  | exp '/' exp        
+  | exp '^' exp        
+  | '('   { 
+            $_[0]->pushdeltaweight(
+              '(' => -1, 
+              ')' => +1, 
+              '+' => +1, 
+            ); 
+          } 
+      exp 
+    ')'
+      {
+         $_[0]->popweight; 
+         "($_[3])"
+      }
+;
+
+%%
+\end{lstlisting}
+
+The listing below shows the tail section.
+The syntax generator is created in line 13.
+The subsequent call to method \verb|LexerGen| 
+sets the  lexical generator (line 14, expanded in Listing \ref{listing:parsergen1}).
+Finally, inside the loop in lines 15-20, the 
+call to \verb|generate| 
+returns the generated expression
+which is evaluated in line 17 and printed
+in line 19. 
+
+\begin{lstlisting}[caption={Using the Generator}, label={listing:usinggen}, 
+        frame=bottomline,
+        %frame=none,
+        keywords={Int,String,YYParse,LexerGen,for,YYParse,generate, my, print, sub, pushdeltaweight,popweight,Unit}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+ 1 %%
+ 2 
+ 3 use Test::LectroTest::Generator qw(:all);
+ 4 
+ 5 sub EVALUATE { 
+ 6   ...
+ 7 }
+ 8 
+ 9 sub main {
+10   my $package = shift;
+11   my $numtimes = shift || 1;
+12 
+13   my $gen = $package->new(); 
+14   $gen->LexerGen( ... );
+15   for (1..$numtimes) {
+16     my $exp = $gen->generate(); 
+17     my $res = EVALUATE($exp);
+18 
+19     print "\n# result: $res\n$exp\n";
+20   }
+21 }
+\end{lstlisting}
+
+When compiled and executed 
+\begin{lstlisting}[%caption={Generating a Generator of Arithmetic Expressions}, label={listing:parsergen}, 
+        frame=none,
+        keywords={eyapp, defaultaction,Paste,use, base, Gen, sub, pushdeltaweight,popweight,Unit,
+                  my,generate,while,do, return}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+$ eyapp -C GeneratorE.eyp 
+$ ./GeneratorE.pm 
+\end{lstlisting}
+
+the program produces
+outputs similar to this:
+\begin{lstlisting}[%caption={Generating a Generator of Arithmetic Expressions}, label={listing:parsergen}, 
+        frame=none,
+        keywords={defaultaction,Paste,use, base, Gen, sub, pushdeltaweight,popweight,Unit,
+                  my,generate,while,do, return}
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+# result: 3
+C=6*1;
+F=4;
+F=8^(2/C+1/8/5)*F/7*1;
+KK=F+2;
+QL=KK;
+J=6*0;
+BA=KK/KK+2*J*KK+2
+\end{lstlisting}

@@ -1,0 +1,99 @@
+Yacc-like LR parser generators \cite{Johnsonyacc} provide ways to solve shift-reduce mechanisms
+based on token precedence. No mechanisms are provided for the resolution
+of difficult reduce-reduce or shift-reduce conflicts. 
+To solve such kind of conflicts the language designer 
+has to modify
+the grammar. 
+
+Some  context-dependency ambiguities can be solved through the use of lexical tie-ins: a flag
+which is set by the semantic actions, whose purpose is to alter the way
+tokens are parsed. 
+A more general solution is to extend 
+LR parsers with the capacity to branch
+at any multivalued entry of the LR action table. For example, Bison \cite{bison},
+via the \verb|%glr-parser directive| 
+and Elkhound \cite{elkhound}
+provide implementations of the Generalized LR (GLR) algorithm \cite{tomita2}.
+In the GLR algorithm, when a conflicting transition is encountered, 
+the parsing stack is forked
+into as many parallel parsing stacks as conflicting actions.
+The next input token
+is read and used to determine the next transitions for each of the
+top states. If some top state does not transit for 
+the input token it means that path is invalid and that branch
+is discarded. 
+Though GLR has been successfully applied to
+the parsing of ambiguous languages, the handling 
+of languages that are both context-dependent and ambiguous 
+is more difficult \cite{kelbt}. 
+The user must always analyze
+the conflicts to make sure that GLR splitting is only
+done where it is intended. A GLR parser splitting inadvertently may cause
+problems less obvious than an LALR parser statically choosing the wrong
+alternative in a conflict. Furthermore, the interactions with the lexer
+have to be considered with great care. Since a split parser consumes
+tokens without performing any actions during the split, the lexer cannot
+obtain information via parser actions. 
+
+The strategy presented in Sections
+\ref{section:ppcrforrr}
+extends yacc conflict resolution mechanisms
+with new ones, supplying ways to resolve conflicts
+that can not be solved using static precedences. 
+The algorithm for the generation of the LR tables is essentially the same
+but the parsing tables can be modified
+at run time. 
+
+The technique involves labelling the points in conflict in the grammar specification
+and providing additional information to resolve the conflict when it arises.
+Crucially, this does not requires rewriting or transforming the grammar,
+trying to resolve the conflict in advance, backtracking or branching into concurrent
+speculative parsers. Instead, the resolution is postponed until the conflict actually arises
+during parsing, whereupon some code inspects the state of the underlying parse
+engine to decide the appropriate solution. 
+Any grammar ambiguity can be fixed with a minimal amount of branching.
+
+This technique can be combined to complement both GLR and backtracking LR
+\mbox{algorithms} to give the programmer a finer control of the branching process.
+It puts the user - as it naturally occurs in top down parsing - 
+in control of the parsing strategy when the grammar is ambiguous,
+making it easier to deal with efficiency and context dependency issues.
+
+The Postponed Conflict Resolution  strategy (PPCR) does not 
+requires more work or more knowledge of LR parsing
+than the usual in yacc programming.
+LR conflict removal is, however,  a laborious task.
+The number of conflicts in a programming language can reach tens and even hundreds:
+The original grammars of Algol-60 and Scheme
+result in 61 and  78 conflicts respectively with 
+an average density of one conflict for each two productions.
+By adding Postponed Conflict Resolution to the classical  precedence and associativity 
+settings we can fix all the conflicts in such grammars without modifying the grammars.
+Removing conflicts while preserving the grammar is preferable to rewriting the grammar in 
+several situations: 
+When using a  conflict removal tool like the one described in
+\cite{passos}, since the language designer will be still familiar with the resulting grammar,
+when the original grammar better reflects  the author ideas about the syntax and semantic of the language,
+when the original grammar is easier to read and to understand (size matters)
+and when (see section \ref{section:inherentlyambiguous}) such unambiguous grammar is hard or impossible to find.
+
+
+The techniques described in this paper have been implemented in 
+\verb|eyapp| \cite{Rodriguez:Leon},
+a yacc-like LALR parser generator for \mbox{Perl \cite{Wall:Perl}}. 
+All the grammar examples used in this work can be found in \cite{lgforte}.
+%The Perl language is, quoting Paul Hudak's \mbox{article \cite{hudak}} a ``{\it domain specific language for text manipulation}".
+
+
+
+This paper is divided in four sections.
+The next section introduces the use of the Postponed Conflict Resolution
+strategy and 
+illustrates it with several examples.
+Section \ref{section:ppcrlr} explains the algorithms behind and 
+some implementation details.
+The last section 
+summarizes the advantages and disadvantages of our proposals.
+%
+%
+
