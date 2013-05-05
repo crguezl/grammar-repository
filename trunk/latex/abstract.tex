@@ -1,0 +1,20 @@
+This paper presents a new algorithm 
+to compute the exact list of tokens 
+expected by any LR syntax analyzer at any point of the scanning process.
+The lexer can, at any time, compute the exact list of valid
+tokens to return only tokens in this set.
+In the case than more than one matching token is in the valid set, the lexer 
+can resort to a nested LR parser to disambiguate.
+Allowing nested LR parsing requires some slight modifications when building
+the LR parsing tables.  
+We also show  how
+to parse inherently 
+ambiguous languages through the
+combination of nested parsing and context aware scanning.
+These expanded lexical analyzers can be generated from high
+level specifications.
+We  show that through this extensions we can  extend the set of recognized languages
+and parse even inherently ambiguous languages.
+
+
+

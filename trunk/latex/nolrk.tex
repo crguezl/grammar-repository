@@ -1,0 +1,43 @@
+The ficticious token strategy used in the previous can be used to 
+fix non LR(k) grammars. The grammar on the left side of the figure below 
+can not be parsed by any LR(k) parser (see file \verb|nolr_k_grammarsolveddynamic3.eyp| at \cite{lgforte}):
+\begin{center}
+\begin{tabular}{p{6cm}p{6cm}}
+\begin{VERBATIM}
+/* A non LR(k) grammar */
+%token c d f x y
+%%
+A: B C d       | E C f ;
+B: x y                 ;
+E: x y                 ;
+C: /* empty */ | C c   ; 
+%%
+\end{VERBATIM}
+&
+\begin{VERBATIM}
+\textbf{%token CSD = %//=CsD}
+%token c d f x y
+%%
+A: B \textbf{CSD} C d   | E C f ;
+B: x y                 ;
+E: x y                 ;
+C: /* empty */ | C c   ; 
+%%
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+Again, we create an artificial token \verb|CSD| which is returned 
+only at the apropriate critical decision point when a prefix of
+the incoming input matches the language defined by the
+following grammar:
+\begin{center}
+\begin{tabular}{p{6cm}p{6cm}}
+\begin{VERBATIM}
+%%
+CsD: Cs 'd'                ; 
+Cs:  /* empty */ |  Cs 'c' ;
+%%
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+

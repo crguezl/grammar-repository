@@ -1,0 +1,21 @@
+
+\HRule{}\\
+Lexical precedence relation:    In traditional approaches, a prece-
+dence ordering is placed on all terminal symbols T so that if the
+regular expressions for more than one terminal match the same prefix
+of the input string, the one with the highest precedence is selected.
+In tools like Lex, this precedence ordering is a total order- ing,
+implicitly specified by the textual order in which the terminals
+appear in the lexical specification.
+In our approach, we cannot base any precedence ordering for terminals
+on their textual order in the grammar specification, as the extensions
+that contain the terminal specifications are composed with the host
+language as an un-ordered set, not an ordered list. Fur- thermore,
+many terminals never appear in the same valid lookahead set and
+thus do not need precedence orderings to disambiguate.
+
+\HRule{}\\
+
+
+
+

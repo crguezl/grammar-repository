@@ -1,0 +1,29 @@
+We have presented a new algorithm to compute the exact list of tokens 
+expected by the syntax analyzer at any point of the scanning process.
+We have explained how this knowledge can be applied 
+to solve the difficulties that arise  in
+those languages where a token's type depends upon
+contextual information and how
+it can be used to derive generators 
+of syntax and semantically correct data phrases.
+
+This approach can deterministically parse and scan a class
+of languages that is strictly larger than what is possible with
+traditional LR parsers and disjoint scanners. The principle is
+that when the scanner can be more discriminating in the tokens that
+it returns it can help the parser to recognize a wider class of
+languages. Since the parse state is used by the scanner to be more
+discriminating, there is an effective cooperation between them.
+\verb|eyapp| is freely available on the Internet at  \cite{Rodriguez:Leon}.
+
+Aho, Sethi, and Ullman \cite[p.84-85]{aho1986}, 
+Aycock and Horspool
+\cite{schrodingerstoken} and 
+Wyk and Schwerdfeger \cite{wyk}
+among others,
+mention several reasons why it is best to kept apart parser
+and scanner.
+A disjoint parser and scanner should be used for languages in which
+this is possible. The disadvantages resulting of not tying them 
+togheter can be overcomed via interactions between the two components as 
+the one presented in this contribution.
