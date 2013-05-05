@@ -1,0 +1,158 @@
+% http://dlt2011.disco.unimib.it/
+%-- DLT 2011. 15th Conference on Developments in Language Theory
+%     * Deadline for submissions: February 21, 2011       <-
+% 12 pages
+% This is LLNCS.DEM the demonstration file of
+% the LaTeX macro package from Springer-Verlag
+% for Lecture Notes in Computer Science,
+% version 2.3 for LaTeX2e
+
+\documentclass{llncs}
+
+%\usepackage[pdftex]{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{makeidx}
+\usepackage{listings}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{fancyvrb}
+
+%\
+\newcommand{\Bs}{\texttt{\symbol{92}}}
+%{
+\newcommand{\B}{\symbol{123}}
+%}
+\newcommand{\BB}{\symbol{125}}
+%$
+\newcommand{\Dr}{\symbol{36}}
+
+\newcommand{\C}{\symbol{91}}
+\newcommand{\CC}{\symbol{93}}
+
+\DefineVerbatimEnvironment%
+  {VERBATIM}{Verbatim}
+  {fontfamily=courier, fontsize=\small, commandchars=\\\{\}, numbers=left, xleftmargin=5mm}
+
+\newcommand{\derives}{\stackrel{*}{\Longrightarrow}}
+
+\begin{document}
+
+\frontmatter          % for the preliminaries
+%
+\pagestyle{headings}  % switches on printing of running heads
+\addtocmark{Extending LR Parsing Capabilities} % additional mark in the TOC
+%
+%\chapter*{Preface}
+%
+%\chapter*{Organization}
+%
+%\section*{Sponsoring Institutions}
+%
+%Bernauer-Budiman Inc., Reading, Mass.\\
+%The Hofmann-International Company, San Louis Obispo, Cal.\\
+%Kramer Industries, Heidelberg, Germany
+%
+%\tableofcontents
+%
+\mainmatter              % start of the contributions
+%
+\title{
+Finding the Exact Set of Tokens Expected by an LR Parser
+%Extending LR Conflict Resolution Mechanisms%\footnotemark[3]
+%Extending yacc Conflict Resolution Language%\footnotemark[3]
+}
+%
+
+
+\titlerunning{Finding the Exact Set of Tokens Expected by an LR Parser}
+%                                     also used for the TOC unless
+%                                     \toctitle is used
+%
+\author{
+C.~Rodriguez-Leon and L. Garcia-Forte
+}
+%
+\authorrunning{C.~Rodriguez-Leon and L. Garcia-Forte}
+%
+%%%% list of authors for the TOC (use if author list has to be modified)
+\tocauthor{Ivar Ekeland, Roger Temam, Jeffrey Dean, David Grove,
+Craig Chambers, Kim B. Bruce, Elisa Bertino}
+%
+\institute{
+Departamento de EIO y Computaci\'on,\\
+Universidad de La Laguna, Tenerife, Spain\\
+\email{[casiano|lgforte]@ull.es},\\ WWW home page:
+\texttt{http://nereida.deioc.ull.es}
+}
+
+\maketitle              % typeset the title of the contribution
+
+\hyphenation{spe-cu-la-ti-ve spe-ci-fi-ca-tion li-mi-ta-tion
+me-cha-nisms go-vern-ment}
+
+\newcommand{\HRule}{\noindent\rule{\linewidth}{0.5mm}}
+
+\begin{abstract}
+\input{abstract.tex}
+\end{abstract}
+
+\section{Introduction}
+\input{introduction.tex}
+
+%\section{The \textit{Postponed Conflict Resolution} Strategy}
+%\label{section:ppcrforrr}
+%\input{ppcrexplained.tex}
+
+%\section{A Simple Example}
+%\label{section:simpleexample}
+%\input{simpleexample.tex}
+
+%\section{Nested Parsing}
+%\label{section:nestedparsing}
+%\input{nestedparsing.tex}
+
+%\section{Related Work}
+%\input{relatedwork.tex}
+
+\section{Tokens Depending on the Syntactic Context}
+\label{section:pli}
+\input{pli.tex}
+
+\section{Computing the Expected Tokens}
+\label{section:expected}
+\input{expected.tex}
+
+\section{Parsing Inherently Ambiguous Languages}
+\label{section:ambiguous}
+\input{ambiguous.tex}
+
+\section{Parsing non LR(k) Grammars}
+\label{section:nolrk}
+\input{nolrk}
+
+\section{The C++ ambiguity}
+\label{section:c++}
+\input{cplusplus.tex}
+
+\section{An Application: Data Generation}
+\label{section:datageneration}
+\input{datageneration.tex}
+
+\section{Conclusions}
+\label{section:conclusion}
+\input{conclusions.tex}
+
+\section*{Acknowledgments}
+\input{acknowledgments.tex}
+
+\begin{thebibliography}{99}
+\input{ppcr_dlt_bib.tex}
+\end{thebibliography}
+
+
+\end{document}
+
+
+
+
