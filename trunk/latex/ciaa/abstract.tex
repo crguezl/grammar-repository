@@ -1,0 +1,37 @@
+%\begin{itemize}
+%\item
+%PPCR only
+%\item new PPCR syntax
+%\item
+%Theoretical
+%\item backtracking LR with PPCR
+%\item general syntax
+%\item
+%nested parsing: how the table construction is modified
+%\item examples
+%\item
+%experimental results
+%
+%\end{itemize}
+Yacc-like LR parser generators provide ways to statically solve
+shift-reduce mechanisms based on token precedence. No
+mechanisms are provided for the resolution of difficult reduce-reduce
+and shift-reduce conflicts. To solve such kind of conflicts the language
+designer has to modify the grammar.  The usual approach
+to cope with these limitations has been to extend
+LR parsers with the capacity to branch at any multivalued
+table entry. 
+The strategy presented in this paper takes an entirely different path:
+It extends
+yacc conflict resolution sub-language with new dynamic
+conflict resolution constructs specifying which production 
+must be chosen in terms of the results of some nested parsing.
+The LR parsing table is then modified at parsing time using the
+information provided by the nested parser.
+Through this simple modification LALR parsers
+are able to parse ambiguous gramars and recognize inherently ambiguous
+languages. 
+
+
+
+

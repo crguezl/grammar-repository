@@ -1,0 +1,248 @@
+Compilers begin processing an input file by performing lexical analysis and syntactic analysis.
+Lexical analyzers break the input in a sequence of units known as tokens.
+Each token is representative of an easy to parse language: in fact, most of the time such languages can be represented
+by regular expressions.
+Usually there is a one-to-one relation between a token and a single regular expression. 
+Problems arise,
+however when a token's type depends upon contextual information \cite{schrodingerstoken}.
+An example of this problem comes from PL/I, where statements like this are
+legal:
+
+\begin{verbatim}
+         if then=if then if=then
+\end{verbatim}
+or even worse
+
+\begin{verbatim}
+         if then=if then if if=then then then=if
+\end{verbatim}
+
+The lexical analyzer has to determine which uses of \verb|if| and \verb|then| 
+correspond to keywords and which correspond to identifiers.
+
+In PL/I this problem arises because keywords like \verb|if| are not reserved and can be used in
+other contexts. This same problem arises in many domain specific
+languages \cite{schrodingerstoken}. 
+The following Eyapp grammar \verb|PL_I_conflictNested| \verb|.eyp|
+summarizes the problem:
+
+\begin{lstlisting}[
+        %caption={Setting the Generator}, 
+        %label={listing:lexergen}, 
+        frame=none,
+        keywords={my,return,lexer,tree,bypass,name,Elements,Int,String,YYParse,LexerGen,Gen},
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+ 1 %lexer { ... }
+ 2 
+ 3 %tree bypass
+ 4 %%
+ 5 stmt: ifstmt 
+ 6   | assignstmt
+ 7 ;
+ 8 
+ 9 ifstmt: 
+10      %name IF
+11     'if' expr 'then' stmt
+12 ;
+13 
+14 assignstmt: 
+15     %name ASSIGN
+16     id '=' expr
+17 ;
+18 
+19 expr:
+20     %name EQ
+21     id '=' id
+22   | id
+23 ;
+24 
+25 id: 
+26     %name ID
+27     ID
+28 ;
+29 
+30 %%
+\end{lstlisting}
+The syntax is similar to \verb|yacc|.
+The \verb|%lexer| directive at line 1 allow us
+to define an explicit lexical analyzer. By default,
+\verb|eyapp| automatically generates a lexical analyzer
+from the 
+\lstinline[
+keywords={token,tree,bypass,name,Elements,Int,String,YYParse,LexerGen,Gen},
+]
+|%token NAME=/regexp/| definitions.
+
+A difference with \verb|yacc| is that
+in \verb|Parse::Eyapp| productions can have {\it names} and {\it labels}. 
+In \verb|Eyapp| names and labels can be 
+explicitly given using the directive \verb|%name|.
+Names are used for different purposes.
+When \verb|eyapp| builds a node of the abstract syntax tree
+it uses the production name to decide the class 
+of the node.
+
+The code below 
+shows the complete definition of the lexical analyzer:
+\begin{lstlisting}[
+        %caption={Setting the Generator}, 
+        %label={listing:lexergen}, 
+        frame=none,
+        keywords={my,return,lexer,self,and,if,do,eq,
+        self,YYExpects,YYPreParse,tree,bypass,name,Elements,Int,String,YYParse,LexerGen,Gen},
+        %firstnumber=1, 
+        %frame=single,
+        %numberstyle=\tiny,
+        %numbers=right
+        ]
+ 1 %lexer {
+ 2   m{\G\s*(\#.*)?}gc;
+ 3 
+ 4   m{\G([a-zA-Z_]\w*)}gc and do {
+ 5     my $id = $1;
+ 6 
+ 7     return ('then','then')  if
+ 8          ($id eq 'then')        && 
+ 9          $self->YYExpects('then');
+10     return ('if', 'if') if 
+11          ($id eq 'if')          && 
+12          $self->YYExpects('if') &&
+13          !$self->YYPreParse('Assign');   
+14     return ('ID', $id);
+15   };
+16 
+17   m{\G(.)}gc and return ($1, $1);
+18 
+19   return('',undef);
+20 }
+\end{lstlisting}
+
+The regular expression matchings 
+at lines 2, 4 and 17 act against the parser 
+input. 
+When evaluated in a boolean context,
+they return \verb|true| if the incoming input
+matches the regular expression. 
+Inside a \verb|%lexer| directive,
+the default variable \verb|$_| refers to the 
+input and the predefined
+variable \verb|$self| refers to the parser object.
+
+White spaces and bash-like comments are skipped in line 2.
+The \verb|\G| anchor inside the regular expression 
+matches the current input position.
+
+The regular expression at line 4 detects the presence of
+an identifier. 
+Inside a regular expression, the bracketing construct 
+\mbox{\tt(\ldots)}
+creates {\it capture buffers}. To refer to the current contents of a
+buffer we use \verb|$1| for the first parenthesis, \verb|$2|
+for the second, and so on. The assignment at line 5
+stores the first capture inside the lexically scoped variable \verb|$id|.
+
+
+The token is \verb|then| whenever 
+the identifier is \verb|then|
+and the token \verb|then| is expected (lines 7-8) by
+the syntax analyzer.
+The problem can be solved using Eyapp \verb|YYExpects| method
+which give us the full list of tokens that can be expected in a given 
+parsing position. This way the scanner 
+can have a more adaptive behavior fulfilling the syntax analyzer expectations.
+
+More difficult is the analysis of the token \verb|if|.
+Tokens \verb|if| and \verb|ID| can both appear after 
+the \verb|then| token and consequently may both
+appear inside the list of tokens returbed by \verb|YYExpects|.
+
+Therefore, the token \verb|if| is returned
+if the identifier is \verb|if| (line 11), 
+\verb|if| $\in$ \verb|YYExpects| (line 12)
+and the incoming input does not conform to a
+assignment statement (line 13). 
+Otherwise
+the token \verb|ID| is returned (line 14).
+
+The call \verb|$self->YYPreParse('Assign')|
+parses the incoming input according to the 
+\verb|Assign| subgrammar:
+
+\begin{verbatim}
+%token ID = /[a-zA-Z_]\w*/
+
+%%
+assignstmt: id '=' expr ;
+expr: id '=' id | id ;
+id: ID ;
+%%
+\end{verbatim}
+
+One character tokens like \verb|'='| are handled by
+the regular expression at line 17.
+
+To get an executable, we compile the auxiliary grammar:
+
+\begin{verbatim}
+$ eyapp -P Assign.eyp
+\end{verbatim}
+The \verb|-P| option used when compiling \verb|Assign.eyp|
+tells \verb|eyapp| to produce parsing tables that will accept 
+if a prefix of the input belongs to the language generated\footnote{By default, a LR parser only accepts if the full input conforms 
+to the grammar}.
+We then proceed to compile the full grammar:
+\begin{verbatim}
+$ eyapp -C PL_I_conflictNested.eyp
+\end{verbatim}
+
+Option \verb|-C| tells \verb|eyapp| to
+generate an executable instead of a Class. 
+The \verb|eyapp| compiler provides a default \verb|main|
+which will be used if no other is provided.
+The default \verb|main| accepts several command line arguments:
+
+\begin{verbatim}
+$ ./PL_I_conflictNested.pm -t -i \
+   -c 'if if=then then then=if'
+\end{verbatim}
+Option \verb|-t| tells the \verb|main| to print the result returned by the parser:
+a  description of the syntax tree will be printed. Option \verb|-i| produces
+information for the terminals in the abstract syntax tree.
+Option \verb|-c| is followed by the input
+for the parser. It indicates that the input is given in the command line.
+The execution of the former command produces the following output describing
+the abstract syntax tree:
+\begin{verbatim}
+IF(EQ(ID[if],ID[then]),ASSIGN(ID[then],ID[if]))
+\end{verbatim}
+
+The \verb|-t| option can be complemented with the \verb|-m| option.
+The last must be followed by an integer.
+It controls the display layout of 
+the abstract syntax tree:
+\begin{verbatim}
+$ ./PL_I_conflictNested.pm -t -i -m 1 \
+   -c 'if if=then then if if=if then then=if'
+IF(
+  EQ(
+    ID[if],
+    ID[then]
+  ),
+  IF(
+    EQ(
+      ID[if],
+      ID[if]
+    ),
+    ASSIGN(
+      ID[then],
+      ID[if]
+    )
+  )
+)
+\end{verbatim}
+
+

@@ -1,0 +1,105 @@
+One of the key contributions that made possible solving the PL-I
+reserved-word versus identifier problem was 
+the fact that the lexical analyzer can 
+compute the \underline{exact} list of tokens 
+expected by the syntax analyzer at any point of the scanning process.
+This section describes the proposed  algorithm 
+to compute this set. 
+The algorithm uses simulation on the stack -
+also known as symbolic interpretation - to achieve its goal.
+
+The algorithm starts copying the parsing stack and callying the 
+parser method $YYExpected$ with a reference to the parser stack:
+
+%\IF {$i\geq maxval$} \STATE $i\gets 0$ \ELSE \IF {$i+k\leq maxval$} \STATE $i\gets i+k$ \ENDIF \ENDIF 
+\begin{algorithmic}
+\STATE    $YYExpected(parser\ stack)$
+\end{algorithmic}
+
+The pseudo-code for $YYExpected$ appears in Algorithm
+\ref{algorithm:YYExpected}. In this and the next algorithms 
+we will follow these conventions:
+\begin{itemize}
+\item $Q$ is the set of the states of the LR automaton
+\item $\Sigma$ is the set of tokens or grammar terminals
+\item $V$ is the set of variables or non-terminals
+\item $P$ is the set of grammar productions
+\item $ACTION$ denotes the LR action table: 
+\[ ACTION : Q \times \Sigma \rightarrow Q \cup P \]
+Where the kind of action is either a shift or a reduce:
+\begin{eqnarray*}
+ACTION(q, a) &=& shift\ q' \in Q\\
+ACTION(q, a) &=& reduce\ by\ A \rightarrow \alpha \in P
+\end{eqnarray*}
+
+\item $GOTO$ is the LR automaton transition table restricted
+to $V$:
+\begin{eqnarray*}
+GOTO : Q \times V &\rightarrow& Q\\
+GOTO(q, A) &=& \ q' \in Q\\
+\end{eqnarray*}
+\end{itemize}
+
+\begin{algorithm}[h] 
+\caption{$YYExpected(\mathcal{S})$}
+\label{algorithm:YYExpected}
+\begin{algorithmic}%[1]
+\REQUIRE {$Stack\ \mathcal{S}$}
+\ENSURE The set of all expected tokens $\mathcal{E}$
+\STATE $s = top(\mathcal{S})$
+\STATE  $\mathcal{E} = \{ a \in \Sigma : \exists t \in Q\ such\ that\ ACTION(s, a) = shift\ t\ \}$
+\STATE  $\mathcal{R} = \{  A \rightarrow \alpha \in P : ACTION(s, b) = reduce  A \rightarrow \alpha \}$
+\IF {$\mathcal{R} \neq \emptyset$} 
+  \STATE $\mathcal{E} = \mathcal{E} \cup YYSimStack(\mathcal{S}, \mathcal{R})$
+\ENDIF
+\RETURN $\mathcal{E}$
+\end{algorithmic}
+\end{algorithm}
+Algorithm \ref{algorithm:YYExpected}  starts traversing the action table for the
+state $s$ in the top of the stack. Tokens $a \in \Sigma$ 
+for which there is a shift action 
+are directly pushed in the set of expected 
+tokens $\mathcal{E}$. 
+The next step is to compute the set $\mathcal{R}$ of productions $A \rightarrow \alpha$  in
+$P$ for which there
+is a reduction. The remaining expected tokens
+are computed calling $YYSimStack$, whose code appears in
+Algorithm \ref{algorithm:YYSimStack}.
+
+
+\begin{algorithm}[h]
+\caption{$YYSimStack(\mathcal{S}, \mathcal{R})$}
+\label{algorithm:YYSimStack}
+\begin{algorithmic}[1]
+\REQUIRE {$Stack\ \mathcal{S}, Productions\ \mathcal{R}$}
+  \FORALL {$A \rightarrow \alpha \in \mathcal{R}$}
+    \IF{$length(S) > length(\alpha)$}
+      \STATE $Stack\ \mathfrak{S} = \mathcal{S}$
+      \STATE \label{line:pop} $pop\ \mathfrak{S},\  length(\alpha)$
+      \STATE $s = top(\mathfrak{S})$
+      \STATE $n = GOTO(s, A)$
+      \STATE $push\ \mathfrak{S}, n$
+      \STATE \label{line:rec}$\mathcal{E} = \mathcal{E} \cup YYExpected(\mathfrak{S})$
+    \ENDIF
+ \ENDFOR
+ \RETURN $\mathcal{E}$
+\end{algorithmic}
+\end{algorithm}
+
+Algorithm \ref{algorithm:YYSimStack} 
+consists of a simulation recursive process that 
+branches at each available reduction.
+The exploration is kept until no more 
+productions can be applied for reduction.
+
+The simulation mimics the LR parsing algorithm:
+For each production $A \rightarrow \alpha \in \mathcal{R}$
+the step of reducing by it is performed using a local stack 
+$\mathfrak{S}$: As many states as the number of symbols in  the right hand side 
+$\alpha$ are extracted from the stack (line \ref{line:pop}), leaving some state $s$ at the top.
+The $GOTO$ table of the LR parser is then consulted to find which the 
+next state $n$ is. The algorithm recursively calls back (line \ref{line:rec}) to 
+$YYExpected$ %(Algorithm \ref{algorithm:YYExpected})
+ to compute
+the set of tokens expected in state $n$. The new tokens are added
+to $\mathcal{E}$.

@@ -1,0 +1,322 @@
+\label{section:amb}
+
+\subsection{An Example: The C++ ambiguity}
+This section illustrates the technique through a problem 
+that arises in C++.
+The C++ syntax \cite{c++} does not disambiguate between expression
+statements (\verb|stmt|) and declaration statements (\verb|decl|). 
+The ambiguity arises when an expression
+statement has a function-style cast as its left-most subexpression.
+Since C \cite{c} does not support function-style casts, this ambiguity does not occur
+in C programs.
+For example, the phrase \verb|int (x) = y+z;| 
+parses as either a \texttt{decl} or a \texttt{stmt}.
+The disambiguation rule used in C++ is that {\it
+if the statement can be interpreted both as a declaration and
+as an expression, the statement is interpreted as a declaration statement.
+}
+The following examples  disambiguate into {\it expression} statements when the
+potential {\it declarator} is followed by an operator different from equal 
+or semicolon (\texttt{type\_spec} stands for a type specifier):
+
+\begin{center}
+\begin{tabular}{|p{3.5cm}|p{4.5cm}|}
+\hline
+expr  & dec\\
+\hline
+\begin{verbatim}
+type_spec(i)++;      
+type_spec(i,3)<<d;  
+type_spec(i)->l=24;
+\end{verbatim}
+&
+\begin{verbatim}
+type_spec(*i)(int); 
+type_spec(j)[5];   
+type_spec(m) = { 1, 2 }; 
+\end{verbatim}\\
+\hline
+\end{tabular}
+\end{center}
+
+Regarding to this problem, Bjarne Stroustrup \cite{stroustrup} remarks:
+\begin{quote}
+\begin{it}
+Simple lexical lookahead can help a parser disambiguate
+most cases. Consider analyzing a statement consisting of
+a sequence of tokens as follows:
+\begin{verbatim}
+              type_spec (dec_or_exp) tail
+\end{verbatim}
+Here \verb|dec_or_exp| must be a declarator, an expression, 
+or both for the statement to be legal. This implies that \verb|tail|
+must be a semicolon, something that can follow a 
+parenthesized declarator or something that can follow
+a parenthesized expression, that is, an initializer, \verb|const|,
+\verb|volatile|, \verb|(|, \verb|[|, or a postfix or infix operator.
+The general cases cannot be resolved without backtracking, nested grammars
+or similar advanced parsing strategies. In particular,
+the lookahead needed to disambiguate this case is not limited.
+\end{it}
+\end{quote}
+
+\subsection{Simplifying the Problem}
+
+The following Eyapp grammar 
+depicts an oversimplified version of the C++ ambiguity 
+
+\begin{center}
+\begin{tabular}{p{8.5cm}}
+\begin{VERBATIM}
+%right '='
+%left '+'
+%%
+prog: \textit{/* empty */}         | prog stmt ;
+stmt: expr ';'            | decl      ;
+expr: ID                  | NUM 
+    | INT '(' expr ')'    \textit{# typecast} 
+    | expr '+' expr       | expr '=' expr 
+;
+decl: INT declarator ';'  
+    | INT declarator '=' expr ';' 
+;
+declarator: ID            | '(' declarator ')' ;
+%%
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+
+
+\subsection{Identifying the problem}
+
+This grammar is ambiguous since an input like: \verb|int (x) = 4;|
+can be interpreted as a \texttt{decl} or an \texttt{expr}.
+The \texttt{eyapp} compiler warn us of the presence of reduce/reduce conflict:
+
+\begin{verbatim}
+$ eyapp -W SimplifiedCplusplusAmbiguity.eyp
+  1 reduce/reduce conflict
+\end{verbatim}
+
+%\begin{figure}[htb]
+%\includegraphics[scale=0.15]{SimplifiedCplusplusAmbiguity.png}
+%\label{figure:cplusplussimplifiedpng}
+%\caption{The LALR automaton for the simplified C++ grammar}
+%\end{figure}
+
+When we look at the \texttt{.output} file  or to the generated automaton graph
+%(Figure \ref{figure:cplusplussimplifiedpng})
+we see the reasons for the conflict:
+
+\begin{VERBATIM}
+Warnings:
+---------
+1 reduce/reduce conflict
+Conflicts:
+----------
+................................... 
+\textbf{State 18 contains 1 reduce/reduce conflict}
+................................... 
+State 18:
+
+    \textbf{expr -> ID .    (Rule 5)}
+    \textbf{declarator -> ID .  (Rule 12)}
+
+    \textbf{')' [reduce using rule 12 (declarator)]}
+    \textbf{')' reduce using rule 5 (expr)}
+    '+' reduce using rule 5 (expr)
+    '=' reduce using rule 5 (expr)
+\end{VERBATIM}
+
+
+This information tell us that when parsing 
+\verb|'int (x|$_{\uparrow}$\verb|) = 4;'|,
+once the parser has seen the \texttt{ID} \verb|x| and is in the presence
+of the closing parenthesis \texttt{')'}, it is incapable to decide whether 
+to reduce by rule 12 (\verb|declarator -> ID|) or rule 5 (\verb|expr -> ID|) .
+
+%The disambiguation rule in C++ is: 
+%{\it Take the phrase as a declaration if it looks as a declaration,
+%otherwise is an expression.}
+
+
+\subsection{Low Level PPCR Syntax}
+\label{subsection:llpcr}
+
+The next figure shows a low level solution
+to the problem using PPCR. 
+\begin{VERBATIM}
+%\B{}
+my $ISDEC;                   \label{vrb:isdec}
+%\BB{}
+%token NUM = /(\Bs{d}+)/
+%token INT = /(int)\Bs{b}/
+%token ID  = /([a-zA-Z_][a-zA-Z_0-9]*)/
+%right '='          \label{vrb:left}
+%left '+'           \label{vrb:right}
+\textbf{%conflict decORexp} \B{}                  \label{vrb:conflictbegin}
+  if ($ISDEC)                                     \label{vrb:isdecused}
+    \B{} \textbf{$self->YYSetReduce('ID:DEC' )}; \BB{}
+  else 
+    \B{} \textbf{$self->YYSetReduce('ID:EXP' )}; \BB{}   \label{vrb:elseconflict}
+\BB{}                                             \label{vrb:conflictend}
+\textbf{%explorer decORexp} \B{} $ISDEC = \textbf{$self->YYPreParse('decl')}; \BB{} \label{vrb:explorer}
+\textbf{%expect-rr 1}  \textit{# expect 1 reduce-reduce conflict} \label{vrb:expectrr}
+%%
+prog: \textit{/* empty */}
+    | prog \textbf{%decORexp?} stmt
+;
+stmt: expr ';'
+    | decl
+;
+expr:
+      \textbf{%name ID:EXP}
+      ID                    \textbf{%PREC decORexp} 
+    | NUM
+    | INT '(' expr ')' \textit{/* typecast */}
+    | expr '+' expr
+    | expr '=' expr
+;
+\textbf{decl}: INT declarator ';'        \label{vrb:decl}
+    | INT declarator '=' expr ';'
+;
+declarator:
+      \textbf{%name ID:DEC}
+      ID                    \textbf{%PREC decORexp} 
+    | '(' declarator ')'
+;
+%%
+\end{VERBATIM}
+
+Additionally to the classic static precedence directives (lines \ref{vrb:left}-\ref{vrb:right}) 
+we can see two PPCR directives: \verb|%conflict| (lines \ref{vrb:conflictbegin}-\ref{vrb:conflictend})
+and \verb|%explorer| (line \ref{vrb:explorer}). 
+
+The auxiliary variable \verb|$ISDEC| 
+(declared at line \ref{vrb:isdec} and used inside the conflict handler at line \ref{vrb:isdecused})
+will be set to \verb|true| if, and only if, the conflictive incoming input
+conforms (line \ref{vrb:explorer}) to the language defined by \verb|decl| (line \ref{vrb:decl}).
+
+The conflict handler \verb|decORexp| simply sets the LR action
+to reduce by 
+\mbox{\tt expr $\rightarrow$} \mbox{ID}
+or
+\verb|declarator| $\rightarrow$ \verb|ID|
+according to the value of \verb|$ISDEC| (lines \ref{vrb:isdecused}-\ref{vrb:elseconflict}).
+
+
+The \verb|%explorer| directive used in line \ref{vrb:explorer} has the syntax:
+\begin{center}
+\begin{tabular}{p{147.43pt}}
+\verb|%explorer conflictName { CODE }| 
+\end{tabular}
+\end{center}
+the purpose of \verb|CODE| is to perform some nested 
+parsing, to decide which action is correct.
+
+The call to the method \verb|YYPreParse| in 
+line \ref{vrb:explorer}
+returns true if there is a prefix of the unexpended input
+that belongs to the language defined by the \verb|decl| subgrammar (line \ref{vrb:decl}).
+
+The point where the exploration starts - defining the time when the code 
+of the \verb|%explore| directive is called -
+is marked inside
+the grammar body using the \verb|%conflictname?| syntax:
+
+\begin{center}
+\begin{tabular}{p{5cm}}
+\begin{VERBATIM}[firstnumber=26]
+prog:
+    \textit{/* empty */}
+  | prog \textbf{%decORexp?} stmt
+;
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+
+The \verb|eyapp| compiler 
+creates a syntactic variable  
+whose only empty production has as associated semantic action
+the code defined in the \verb|%explorer| directive. The points where the 
+\verb|%decORexp?| directive appears are substituted by that variable. 
+Thus, the former lines are conceptually equivalent to:
+
+\begin{center}
+\begin{tabular}{p{8cm}}
+\begin{VERBATIM}[numbers=none]
+prog:
+    \textit{/* empty */}
+  | prog \textbf{decORexp.explorer} stmt
+;
+
+decORexp.explorer : \textit{/* empty */}
+       { $ISDEC = $self->YYPreParse('decl'); }
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+
+The \verb|%expect-rr 1| directive at line \ref{vrb:expectrr}
+keeps \verb|eyapp| silent, 
+avoiding the warnings regarding the reduce-reduce conflict.
+
+\subsection{High Level PPCR Syntax}
+\label{subsection:hlppcr}
+The methodology followed in the previous section is so general that we 
+have extended \verb|eyapp| with  a higher level syntax 
+which specifies this particular way of 
+solving difficult conflicts:
+\begin{verbatim}
+   %conflict conflictName nestedParser? actionName: actionName
+\end{verbatim}
+Where \verb|conflictName| is the name given to the conflict,
+\verb|nestedParser| refers to the sub-grammar used for pre-parsing the incoming input
+and \verb|actionName| is the name of a production involved in the conflict
+or the reserved word \verb|shift|. 
+
+The construct is translated as follows:
+The parser for
+\verb|nestedParser| is called each time the exploration point is reached, 
+saving the result inside an attribute of the parser.
+Each time the conflict state is reached, this attribute is checked 
+and the corresponding parsing action is taken.
+
+The next figure shows the complete header of the solution to the C++ example
+using the new syntax.
+The body is exactly the same that appears in the previous listing in section
+\ref{subsection:llpcr}. In this version any explicit code has disappeared.
+
+\begin{center}
+\begin{tabular}{p{10.3cm}}
+\begin{VERBATIM}
+%token NUM = /(\Bs{d}+)/
+%token INT = /(int)\b/
+%token ID  = /([a-zA-Z_][a-zA-Z_0-9]*)/
+
+%right '='
+%left '+'
+
+\textbf{%conflict decORexp decl? ID:DEC : ID:EXP}
+
+%expect-rr 1  # expect 1 reduce-reduce conflict
+
+%%
+prog: \textit{/* empty */} | prog \textbf{%decORexp?} stmt ;
+stmt: expr ';'    | decl ;
+expr:
+      \textbf{%name ID:EXP}
+      ID                    \textbf{%PREC decORexp} 
+    | NUM           | INT '(' expr ')' 
+    | expr '+' expr | expr '=' expr
+;
+\textbf{decl}: INT declarator ';' | INT declarator '=' expr ';'
+;
+declarator:
+      \textbf{%name ID:DEC}
+      ID                    \textbf{%PREC decORexp} 
+    | '(' declarator ')'
+;
+%%
+\end{VERBATIM}
+\end{tabular}
+\end{center}
