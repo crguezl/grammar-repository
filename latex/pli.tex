@@ -1,0 +1,149 @@
+Compilers begin processing an input file by performing lexical analysis and syntactic analysis.
+Lexical analyzers break the input in a sequence of units known as tokens.
+Each token is representative of an easy to parse language: in fact, most of the time such languages can be represented
+by regular expressions.
+Usually there is a one-to-one relation between a token and a single regular expression. 
+Problems arise,
+however when a token's type depends upon contextual information \cite{schrodingerstoken}.
+An example of this problem comes from PL/I, where statements like this are
+legal:
+\begin{center}
+%\begin{tabular}{p{43.60mm}}
+\begin{VERBATIM}[numbers=none]
+                   if \textit{then=if} then \textit{\underline{if}=then}
+\end{VERBATIM}
+%\end{tabular}
+\end{center}
+The lexical analyzer has to determine which uses of \verb|if| and \verb|then| 
+correspond to keywords and which correspond to identifiers.
+In PL/I this problem arises because keywords like \verb|if| are not reserved and can be used in
+other contexts. 
+The problem is also partly a consequence of
+decoupling parser and scanner into separate contexts: it is clear than the 
+aparitions of \verb|if| and \verb|then| in the {\it expression} contexts above 
+(in italics) are identifiers,
+while outside of them correspond to the \verb|if| and \verb|then| keywords.
+The following statement is  even worse:
+\begin{center}
+\begin{tabular}{p{74.08mm}}
+\begin{VERBATIM}[numbers=none]
+if \textit{then=if} then \underline{if} \textit{if=then} then \textit{then=if}
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+Both interpretations, identifier and keyword are valid
+when parsing at the point of the underlined \verb|if|: It
+can be a nested \verb|if| keyword as in this example or an identifier
+assignment as is in the previous example. To decide which one is,
+we have to continue scanning and parsing to see if a valid expression
+follows.
+
+The following Eyapp grammar \verb|PL_I_conflictNested.eyp| 
+(download it from \cite{lgforte})
+presents a simplified version of the problem 
+and solves it:
+
+\begin{center}
+\begin{tabular}{p{68.79mm}}
+\begin{VERBATIM}
+\textbf{%token then = %/(then)\b/}                               \label{vrb:tokenthen}
+\textbf{%token if   = %/(if)\b/=expr_then}                       \label{vrb:tokenif}
+\textbf{%token ID   =  /(\C{a}-zA-Z_\CC{}\C{a}-zA-Z_0-9\CC{}*)/} \label{vrb:tokenid}
+%%
+stmt:       ifstmt    | assignstmt ;
+ifstmt:     if expr then stmt      ;
+assignstmt: id '=' expr            ;
+expr:       id '=' id | id         ;
+id:         ID                     ;
+%%
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+The \verb|%token ID| declaration at line \ref{vrb:tokenid} is translated by the compiler 
+into a code fragment that checks if the current unexpended input matches the regular expression:
+\begin{center}
+\begin{tabular}{p{96mm}}
+\begin{verbatim}
+/\G([a-zA-Z_][a-zA-Z_0-9])/gc and return ('ID', $1);
+\end{verbatim}
+\end{tabular}
+\end{center}
+The expression is evaluated in short-circuit. 
+The anchor \verb|\G| stands for {\it the current position inside the input}.
+
+When the token definition, as in lines \ref{vrb:tokenthen} and \ref{vrb:tokenif} is prefixed by
+a \verb|%|, the token is returned only if it is expected by the syntactic analyzer:
+\begin{center}
+\begin{tabular}{p{107mm}}
+\begin{verbatim}
+self.expects('then') and /\G(then)\b/gc and return 'then';
+\end{verbatim}
+\end{tabular}
+\end{center}
+Where \verb|self| denotes the parser object and the call to method \verb|expects| returns the set
+of valid tokens.
+
+Finally, when a token definition is postfixed by an '\verb|=|' followed by a syntactic variable \verb|A|
+- as in line \ref{vrb:tokenif} -
+the  token is returned only if the input that follows matches the language defined by \verb|A|.
+Thus, the definition of token \verb|if| at line \ref{vrb:tokenif} is translated according to the following pseudo-code \footnote{For the sake of 
+clarity, code related with the maintenance of the current scanning position has been omitted}:
+\begin{center}
+\begin{tabular}{p{121mm}}
+\begin{verbatim}
+if (/\G(if)\b/gc) {
+  if (self.expects('if')) {
+     if (self.YYPreParse('expr_then')) {
+       return 'if';
+     }
+  }
+}
+\end{verbatim}
+\end{tabular}
+\end{center}
+Where the call to the method \verb|YYPreParse('expr_then')| checks that a prefix of the incoming input 
+belongs to the language defined by the syntactic variable \verb|expr_then|.
+The grammar for \verb|expr_then| is as follows:
+\begin{center}
+\begin{tabular}{p{57mm}}
+\begin{VERBATIM}
+%token then = %/(then)\Bs{}b/        \label{vrb:tokenthenaux}
+%token ID   = /(\C{}a-zA-Z_\CC{})\Bs{}w*/
+%%
+expr_then: expr then      ; 
+expr:      id '=' id | id ; 
+id:        ID             ;
+%%
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+In plain words: An input '\verb|if|' stands for the keyword if, and only if, the token is expected by the syntax analyzer
+and is followed by a correct expression followed by the keyword \verb|then| (observe the \verb|%| prefixing the regular expression
+\verb|%/(then)\b/|).
+
+\section{Nested LR Parsing}
+\label{section:nestedlrparsing}
+
+A modification is needed when generating the LR tables for a sub-grammar starting in $A$.
+Nested parsers for a nonterminal $A$ must accept prefixes  of the incoming input not necessarily
+terminated by the end of input token. The action table is modified to have an $accept$ action 
+for each entry $(s, a)$
+where the state $s$ has an LR item $[A' \rightarrow A_\uparrow , a]$ where $a \in FOLLOW(A)$.
+That is, it accepts when something derivable from $A$ has been seen and the next token is a legal one.
+Here $A'$ denotes the super-start symbol for the sub-grammar starting in $A$. The set $FOLLOW(A)$ 
+is the set of tokens $b$ in the super-grammar such that exists a derivation 
+$S  \stackrel{*}{\Longrightarrow}  \alpha A b \beta$.
+The end of input is also included in $FOLLOW(A)$ if, and only if,
+exists a derivation $S \stackrel{*}{\Longrightarrow} \alpha A$.
+
+\section{Precedence}
+\label{section:precedence}
+The order in which the token declarations are checked is as follows:
+\begin{enumerate}
+\item Single quoted string tokens inside the body of the grammar like '\verb|=|' above are checked first. 
+If two patterns match the same string, the longest match wins
+\item The other declared tokens \verb|%token TOKENNAME = ...| are processed according to their appearance 
+inside the text 
+\end{enumerate}
+
+

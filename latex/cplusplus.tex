@@ -1,0 +1,91 @@
+This section illustrates the technique through a problem 
+that arises in C++.
+The C++ syntax \cite{c++} does not disambiguate between expression
+statements (\verb|stmt|) and declaration statements (\verb|decl|). 
+The ambiguity arises when an expression
+statement has a function-style cast as its left-most subexpression.
+Since C \cite{c} does not support function-style casts, this ambiguity does not occur
+in C programs.
+For example, the phrase \verb|int (x) = y+z;| 
+parses as either a \texttt{decl} or a \texttt{stmt}.
+The disambiguation rule used in C++ is that {\it
+if the statement can be interpreted both as a declaration and
+as an expression, the statement is interpreted as a declaration statement.
+}
+The following examples  disambiguate into {\it expression} statements when the
+potential {\it declarator} is followed by an operator different from equal 
+or semicolon (\texttt{type\_spec} stands for a type specifier):
+
+\begin{center}
+\begin{tabular}{|p{3.5cm}|p{4.5cm}|}
+\hline
+expr  & dec\\
+\hline
+\begin{verbatim}
+type_spec(i)++;      
+type_spec(i,3)<<d;  
+type_spec(i)->l=24;
+\end{verbatim}
+&
+\begin{verbatim}
+type_spec(*i)(int); 
+type_spec(j)[5];   
+type_spec(m) = { 1, 2 }; 
+type_spec(a);              
+type_spec(*b)();          
+type_spec(c)=23;         
+type_spec(d),e,f,g=0;   
+type_spec(h)(e,3);     
+\end{verbatim}\\
+\hline
+\end{tabular}
+\end{center}
+
+Regarding to this problem, Bjarne Stroustrup \cite{stroustrup} remarks:
+\begin{quote}
+\begin{it}
+Simple lexical lookahead can help a parser disambiguate
+most cases. Consider analyzing a statement consisting of
+a sequence of tokens as follows:
+\begin{verbatim}
+              type_spec (dec_or_exp) tail
+\end{verbatim}
+Here \verb|dec_or_exp| must be a declarator, an expression, 
+or both for the statement to be legal. This implies that \verb|tail|
+must be a semicolon, something that can follow a 
+parenthesized declarator or something that can follow
+a parenthesized expression, that is, an initializer, \verb|const|,
+\verb|volatile|, \verb|(|, \verb|[|, or a postfix or infix operator.
+The general cases cannot be resolved without backtracking, nested grammars
+or similar advanced parsing strategies. In particular,
+the lookahead needed to disambiguate this case is not limited.
+\end{it}
+\end{quote}
+
+The following Eyapp grammar 
+depicts a solution based on the ficticious token technique 
+for an oversimplified version of the C++ ambiguity:
+
+\begin{center}
+\begin{tabular}{p{116mm}}
+\begin{VERBATIM}
+\textbf{%token ISDECL = %//=decl}
+%token NUM    = /(\Bs{}d+)/
+%token INT    = /(int)\Bs{}b/
+%token ID     = /(\C{}a-zA-Z_\CC{}\C{}a-zA-Z_0-9\CC{}*)/
+
+%right '='
+%left '+'
+%%
+prog: \textit{/* empty */}         | prog stmt                   ;
+stmt: expr ';'            | \textbf{ISDECL} decl                 ;
+expr: ID                  | NUM 
+    | INT '(' expr ')'    \textit{# typecast} 
+    | expr '+' expr       | expr '=' expr               ;
+\textbf{decl}: INT declarator ';'  | INT declarator '=' expr ';' ; \label{vrb:decl}
+declarator: ID            | '(' declarator ')'          ;
+%%
+\end{VERBATIM}
+\end{tabular}
+\end{center}
+

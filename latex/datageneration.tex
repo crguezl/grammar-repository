@@ -1,0 +1,58 @@
+The fact that we can compute the exact set of expected tokens 
+has several applications. One of them is that a LR parser 
+can be easily re-used to build a generator of the language described by
+a grammar.
+
+The idea  of grammar based data generation languages
+has been exploited before \cite{maurer,yagg,yougen}.
+The approach presented here is that
+the same grammar can be reused to 
+generate data 
+by changing
+the lexical analyzer by a token generator. 
+This section illustrates briefly the proposed methodology\footnote{See 
+file {\tt t/77lexicalanalyzergeneration.t} in \cite{lgforte} for the details}.
+
+For each token the programmer defines a random generator,
+which generates elements in the language associated with the token.
+This task is facilitated by libraries supporting an algebra of generators 
+like the one described in \cite{testlectrotest}.
+Then, instead of the typical lexical analyzer,
+we use the lexical generator described in
+Algorithm \ref{algorithm:lexicalgenerator}:
+
+
+\begin{algorithm}[h] 
+\caption{$LexicalGenerator(parser)$}
+\label{algorithm:lexicalgenerator}
+\begin{algorithmic}[1]
+\REQUIRE {$LR\ Parser:\ parser$}
+\ENSURE A syntactically correct pair $(token, attribute)$
+\STATE  \label{line:weights} $weights = parser.weights()$
+\STATE  \label{line:expected}$expected = parser.YYExpected()$
+\STATE  \label{line:calltoFreq} $token = Freq(weights, expected)$
+\STATE  \label{line:setgen}$generator = parser.generator(token)$
+\STATE  \label{line:setattr}$attribute = generator.generate()$
+\RETURN \label{line:returntoken}$(token, attribute)$
+\end{algorithmic}
+\end{algorithm}
+    
+The attribute $parser.weights$ of the $parser$ object
+contains a probability distribution
+which can be changed on the fly by the grammar semantic actions.
+The call to $Freq$ at line \ref{line:calltoFreq}
+randomly picks one of the expected tokens
+according to the $weights$ probability distribution.
+Once the $token$ is chosen among the expected ones ($parser.YYExpected()$), 
+the lexer 
+calls the $generate$ method of the corresponding generator 
+$parser.generator(token)$ to compute the $attribute$.
+Finally, the pair $(token, attribute)$ is returned to the
+syntactic generator (line \ref{line:returntoken}).
+
+Inside the body of the grammar, 
+the semantic code associated with each production is to concatenate the attributes
+on the right hand side symbols of the production.
+This default behavior can be modified by the programmer by explictly 
+writing semantic code. In particular, they can be used to modify the token probability distribution.
+

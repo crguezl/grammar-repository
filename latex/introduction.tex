@@ -1,0 +1,114 @@
+
+
+Usually the type of a token - the language that the token describes -
+can be defined by a regular expression or some other autonomous mechanism.
+There are cases, however, where a token's type depends upon context 
+information that the scanner can not manage.
+The most quoted case being the PL/I language, where statements like this are legal:
+\begin{verbatim}
+            if then=if then if if=then then then=if
+\end{verbatim}
+The scanner should anticipate which uses of \verb|if| and \verb|then|
+conform to identifiers and which to keywords.
+The problem arises because keywords like \verb|if| and \verb|then|
+are not reserved, and can be used in other
+contexts. 
+This problem arises in other situations. As an example consider parsing the Java 1.5 type expression 
+\verb|List<List<Integer>>|. After recognizing \verb|Integer| as a type,
+the parser is in a state in which a greater-than symbol \verb|>| is in
+the valid lookahead set, but the right shift operator \verb|>>| is not.
+The problem also frequently appears when parsing domain specific
+languages and when extending existing languages \cite{schrodingerstoken,wyk}.
+
+The main contribution of this paper is 
+a new algorithm to compute the \underline{exact} list of tokens 
+expected by the syntax analyzer at any point of the scanning process.
+The lexer can, at any time, compute the exact list of valid
+tokens and return only tokens in this set.
+In the case than more than one token can be returned, the lexer 
+can resort to a nested LR parser to decide which one to return. 
+
+
+Aycock and Horspool \cite{schrodingerstoken} proposed
+the concept of Schr\"{o}edinger token to solve the problem of context aware scanners.
+A token does not have a unique type but instead has a superposition of types.
+Their idea requires a GLR parser to work. 
+Another solution for GLR was introduced by Visser \cite{visser2}:
+The scanner/parser dichotomy is eliminated
+by the use of character-level grammars.
+XGLR \cite{xglr} also extends
+GLR to allow a different scanner state/input position to be
+associated with each parse thread and thus to use context to
+support lexically ambiguous input. 
+
+Despite being robust, GLR algorithms
+cannot guarantee determinism in conflictive grammars:
+ambiguities must be solved by the user.
+Aho, Sethi, and Ullman \cite[p.84-85]{aho1986}, 
+Aycock and Horspool
+\cite{schrodingerstoken} and 
+Wyk and Schwerdfeger \cite{wyk}
+among others,
+mention several reasons why it is best to kept apart parser
+and scanner.
+
+Packrat parsers \cite{ford2,grimm} are another kind of
+scannerless parsers. Packrat parsers use
+parsing expression grammars or PEGs, 
+which look similar to context-free grammars but have a lower level interpretation, 
+which is closer to how string recognition is done by a recursive descent parser.
+Some implementations \cite{grimm} give support 
+to non-declarative specifications such as the well known C typename/identifier
+ambiguity. 
+Packrat parsers, however, are character-level backtracking LL(1) parsers
+and consequently are unable to parse
+left-recursive grammars without special modifications.
+
+The most similar proposal is the work by Wyk and Schwerdfeger \cite{wyk}.
+They introduced a new context-aware scanning algorithm in
+which the scanner uses contextual information to disambiguate lexical
+syntax. The LR parser algorithm is modified:
+it passes to the scanner the set of valid symbols
+that the scanner may return at that point in parsing. 
+An analysis is given that can
+statically verify that the scanner will never return more than one
+token for a single input.
+Our approach does not requires the modification of the LR algorithm
+and can be combined with nested parsing to select the right token in the case than 
+more than one token matches the current input.
+
+This paper is divided in ten sections.
+In Section
+\ref{section:pli} 
+we introduce the technique that makes use of
+the new algorithm to compute the exact list of tokens 
+expected by the syntax analyzer at any point of the scanning process and apply it
+to the mentioned PL/I example.
+The new algorithm, which uses symbolic interpretation to compute the exact set of expected tokens,
+is presented in Section \ref{section:expected}.
+Section \ref{section:nestedlrparsing} describes some modifications 
+in the LR construction table in order to 
+permit nested LR parsing. 
+Section
+\ref{section:precedence}
+defines the criteria used to give priority to the set of terminals.
+Section \ref{section:ambiguous} shows
+how inherently 
+ambiguous languages can be parsed through the
+combination of nested parsing and context aware scanning.
+Section \ref{section:nolrk} illustrate the use of this technique
+on non LR(k) grammars.
+Section \ref{section:c++} presents a solution for the well known C++ ambiguity
+\cite{c++}.
+Section
+\ref{section:datageneration}
+briefly describes how the knowledge of the exact set of tokens can be used to 
+produce a language generator instead of a language parser.
+The techniques explained in this paper have been implemented in 
+\verb|eyapp| \cite{Rodriguez:Leon},
+a yacc-like LALR parser generator \cite{Johnsonyacc} for \mbox{Perl \cite{Wall:Perl,perl6}}. 
+The last section 
+summarizes the advantages and disadvantages of our proposal.
+%
+%
+

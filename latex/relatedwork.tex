@@ -1,0 +1,115 @@
+We describe some techniques that are closely related to ours.
+
+
+GLR (generalized-LR) parsing nondeterministically takes all actions
+when encountering a parse conflict; hence GLR can even parse ambiguous
+grammars. GLR has been greatly improved recently. Johnstone et
+al. [8] have taken its runtime down from expo- nential to cubic.
+Wagner and Graham [18] have shown empirically that most ambiguity
+occurs near the bottom of parse trees and that on practical languages
+the amount of time lost is very low. McPeak and Necula [11] have
+shown that GLR runs deterministically 70\% of the time and capitalized
+on that fact in their optimized Elkhound system. Thus speed is not
+a primary factor for avoiding GLR.  An advantage of a nondeterministic
+system is that the disam- biguation of C typenames and identifiers
+can be deferred to the se- mantic analysis phase [18]. However,
+despite being robust, GLR algorithms cannot guarantee determinism
+on grammars generating conflicting parse tables; ambiguities must
+be located by a mixture of debugging, intense empirical testing,
+and human intuition.  
+
+Visser has developed a novel system of parsing
+based upon the GLR engine. [12, 17] He turns nondeterminism to his
+advantage by eliminating the scanner and using character-level
+grammars, elimi- nating the scanner/parser dichotomy. Deterministic
+character-level grammars are nearly nonexistent; not so much in the
+nondetermin- istic system, which allows for unlimited lookahead
+capability as well as tolerance of ambiguity.
+
+Adapting lexical
+syntax to the context free model requires some new footwork, as
+certain convenient features of lexical DFAs are not present to be
+exploited; they are replaced with “disambiguation filters” [12].
+These include follow restrictions to replace maximal munch (e.g.,
+a number cannot be directly followed by a digit) and reject productions
+to replace the preference for keywords speci- fied by lexical
+precedence. Operator precedence and associativity are still present,
+with the traditional effects. However, it still makes no guarantee
+of determinism, being based upon the GLR engine. Although this may
+be reasonable in some cases, for building ex- tensible languages
+we prefer a guarantee of determinism since lan- guages may be
+composed at the direction of the programmer, not a language expert
+who can resolve syntactic or lexical ambiguities.  
+
+
+XGLR [3] extends
+GLR to allow a different scanner state (e.g. input position) to be
+associated with each parse thread and thus supports lexically
+ambiguous input. As with scannerless GLR, the XGLR engine uses
+parser context to choose (disambiguate) the cor- rect scan or tree
+at run time and provides no determinism analysis.  It is worth
+noting that context-aware scanning can also be used with GLR parsing
+algorithms. In fact, an early prototype implemen- tation of Copper
+did just that. But since the LALR(1) version can handle a wide class
+of languages that includes the language exten- sions we have developed
+and because it provides the determinism analysis we seek, Copper
+does not use GLR.  
+
+
+
+Schro ̈dinger’s Token:   Another approach to
+this problem is the “Schro ̈dinger’s token.” Aycock and Horspool
+[2] present non- reserved keywords as a hurdle for traditional
+parsers. For example, in PL/I it is not known at scan-time whether
+a token such as IF is a keyword or identifier. The “Schro ̈dinger’s
+token” is a token representing a lexical ambiguity; it may occur
+alone, representing  Acknowledgments an ambiguity on a particular
+lexeme, or in a sequence, represent- ing a more profound ambiguity.
+An individual Schro ̈dinger’s token consists of more than one
+numbered terminal/lexeme pairs. The terminal may be from the grammar’s
+terminal set or it may be a “null” terminal, in which case its
+corresponding lexeme is the empty string. The “null” tokens, which
+the parser ignores, are used as padding in an ambiguous scan where
+one interpretation has more tokens than the other, such as in the
+case where “>>” can be inter- preted in C++ as a shift-right operator
+or two closing brackets.  Although Aycock and Horspool’s system
+mandates a conflict- free parse table, the Schro ̈dinger’s tokens
+embody lexical ambigu- ity. When used by the parser as lookahead,
+they represent several parse actions; the parsing algorithm must
+take these concurrently, requiring a GLR parser to implement.
+Although this causes a mini- mal amount of ambiguity, there is, yet
+again, no guarantee of deter- minism. Also, in this system significant
+effort must be expended in order to pull off the nondeterministic
+scan. In the case where lexical boundaries are unclear, such as
+their example of the C++ templates, the addition of the “null”
+tokens must be carefully orchestrated.  
+
+
+PEGs:   Another kind of
+scannerless parser is the novel packrat parser, which is used for
+parsing expression grammars (PEGs). PEGs are deterministic by
+definition: there is exactly one produc- tion for each nonterminal.
+Productions are written in an EBNF-like format, with the only
+“branching” mechanism being an “ordered choice” written as “|” [4,
+6]. All constructs in PEGs are also greedy [6]. Being completely
+deterministic, they are closed under compo- sition. Grimm [6] has
+written a packrat parser generator known as Rats! specifically for
+use with extensible languages.  As well as being closed under
+composition, Grimm’s system is scannerless and supports non-declarative
+specifications for fringe cases such as the C typename/identifier
+ambiguity. However, PEGs come with drawbacks: (1) Packrat parsers
+are character-level back- tracking LL(1) parsers, and while they
+run in linear time, like any LL(1) parser they are unable to parse
+any left-recursive grammar without special modifications; (2) a
+context-free grammar exten- sion connects itself to the host by
+inserting new productions; ana- logically a PEG extension must
+connect itself by inserting new “or- dered choices.” But our
+extensions are intended to be insensitive to the order of addition
+since they are added as un-ordered sets of extensions to the host
+language, not ordered lists. The “ordered choices” in PEGs do not
+support this.
+
+
+Erik's work
+
+
